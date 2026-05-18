@@ -1,0 +1,182 @@
+﻿[
+  {
+    Plan: {
+      Node Type: Nested Loop,
+      Parallel Aware: {Scrubbed},
+      Async Capable: {Scrubbed},
+      Join Type: Inner,
+      Startup Cost: {Scrubbed},
+      Total Cost: {Scrubbed},
+      Plan Rows: {Scrubbed},
+      Plan Width: {Scrubbed},
+      Disabled: false,
+      Inner Unique: true,
+      Plans: [
+        {
+          Node Type: Merge Join,
+          Parent Relationship: Outer,
+          Parallel Aware: {Scrubbed},
+          Async Capable: {Scrubbed},
+          Join Type: Inner,
+          Startup Cost: {Scrubbed},
+          Total Cost: {Scrubbed},
+          Plan Rows: {Scrubbed},
+          Plan Width: {Scrubbed},
+          Disabled: false,
+          Inner Unique: false,
+          Merge Cond: (w.id = w6.workflow_id),
+          Plans: [
+            {
+              Node Type: Limit,
+              Parent Relationship: Outer,
+              Parallel Aware: {Scrubbed},
+              Async Capable: {Scrubbed},
+              Startup Cost: {Scrubbed},
+              Total Cost: {Scrubbed},
+              Plan Rows: {Scrubbed},
+              Plan Width: {Scrubbed},
+              Disabled: false,
+              Plans: [
+                {
+                  Node Type: Index Scan,
+                  Parent Relationship: Outer,
+                  Parallel Aware: {Scrubbed},
+                  Async Capable: {Scrubbed},
+                  Scan Direction: Forward,
+                  Index Name: pk_workflows,
+                  Relation Name: workflows,
+                  Alias: w,
+                  Startup Cost: {Scrubbed},
+                  Total Cost: {Scrubbed},
+                  Plan Rows: {Scrubbed},
+                  Plan Width: {Scrubbed},
+                  Disabled: false,
+                  Filter: ((status = ANY ('{0,1,2}'::integer[])) AND ((start_at > now()) OR (ANY (id = (hashed SubPlan 2).col1)))),
+                  Plans: [
+                    {
+                      Node Type: Hash Join,
+                      Parent Relationship: SubPlan,
+                      Subplan Name: SubPlan 2,
+                      Parallel Aware: {Scrubbed},
+                      Async Capable: {Scrubbed},
+                      Join Type: Inner,
+                      Startup Cost: {Scrubbed},
+                      Total Cost: {Scrubbed},
+                      Plan Rows: {Scrubbed},
+                      Plan Width: {Scrubbed},
+                      Disabled: false,
+                      Inner Unique: true,
+                      Hash Cond: (w0.depends_on_workflow_id = w1.id),
+                      Plans: [
+                        {
+                          Node Type: Bitmap Heap Scan,
+                          Parent Relationship: Outer,
+                          Parallel Aware: {Scrubbed},
+                          Async Capable: {Scrubbed},
+                          Relation Name: workflow_dependency,
+                          Alias: w0,
+                          Startup Cost: {Scrubbed},
+                          Total Cost: {Scrubbed},
+                          Plan Rows: {Scrubbed},
+                          Plan Width: {Scrubbed},
+                          Disabled: false,
+                          Plans: [
+                            {
+                              Node Type: Bitmap Index Scan,
+                              Parent Relationship: Outer,
+                              Parallel Aware: {Scrubbed},
+                              Async Capable: {Scrubbed},
+                              Index Name: pk_workflow_dependency,
+                              Startup Cost: {Scrubbed},
+                              Total Cost: {Scrubbed},
+                              Plan Rows: {Scrubbed},
+                              Plan Width: {Scrubbed},
+                              Disabled: false
+                            }
+                          ]
+                        },
+                        {
+                          Node Type: Hash,
+                          Parent Relationship: Inner,
+                          Parallel Aware: {Scrubbed},
+                          Async Capable: {Scrubbed},
+                          Startup Cost: {Scrubbed},
+                          Total Cost: {Scrubbed},
+                          Plan Rows: {Scrubbed},
+                          Plan Width: {Scrubbed},
+                          Disabled: false,
+                          Plans: [
+                            {
+                              Node Type: Bitmap Heap Scan,
+                              Parent Relationship: Outer,
+                              Parallel Aware: {Scrubbed},
+                              Async Capable: {Scrubbed},
+                              Relation Name: workflows,
+                              Alias: w1,
+                              Startup Cost: {Scrubbed},
+                              Total Cost: {Scrubbed},
+                              Plan Rows: {Scrubbed},
+                              Plan Width: {Scrubbed},
+                              Disabled: false,
+                              Recheck Cond: (status = ANY ('{0,1,2}'::integer[])),
+                              Plans: [
+                                {
+                                  Node Type: Bitmap Index Scan,
+                                  Parent Relationship: Outer,
+                                  Parallel Aware: {Scrubbed},
+                                  Async Capable: {Scrubbed},
+                                  Index Name: ix_workflows_status,
+                                  Startup Cost: {Scrubbed},
+                                  Total Cost: {Scrubbed},
+                                  Plan Rows: {Scrubbed},
+                                  Plan Width: {Scrubbed},
+                                  Disabled: false,
+                                  Index Cond: (status = ANY ('{0,1,2}'::integer[]))
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              Node Type: Index Only Scan,
+              Parent Relationship: Inner,
+              Parallel Aware: {Scrubbed},
+              Async Capable: {Scrubbed},
+              Scan Direction: Forward,
+              Index Name: pk_workflow_link,
+              Relation Name: workflow_link,
+              Alias: w6,
+              Startup Cost: {Scrubbed},
+              Total Cost: {Scrubbed},
+              Plan Rows: {Scrubbed},
+              Plan Width: {Scrubbed},
+              Disabled: false
+            }
+          ]
+        },
+        {
+          Node Type: Index Scan,
+          Parent Relationship: Inner,
+          Parallel Aware: {Scrubbed},
+          Async Capable: {Scrubbed},
+          Scan Direction: Forward,
+          Index Name: pk_workflows,
+          Relation Name: workflows,
+          Alias: w7,
+          Startup Cost: {Scrubbed},
+          Total Cost: {Scrubbed},
+          Plan Rows: {Scrubbed},
+          Plan Width: {Scrubbed},
+          Disabled: false,
+          Index Cond: (id = w6.linked_workflow_id)
+        }
+      ]
+    }
+  }
+]

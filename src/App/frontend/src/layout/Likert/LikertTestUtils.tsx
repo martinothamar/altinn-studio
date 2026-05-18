@@ -1,0 +1,170 @@
+import React from 'react';
+
+import { jest } from '@jest/globals';
+import { v4 as uuidv4 } from 'uuid';
+import type { AxiosResponse } from 'axios';
+
+import { getFormBootstrapMock } from 'src/__mocks__/getFormBootstrapMock';
+import { defaultMockDataElementId } from 'src/__mocks__/getInstanceDataMock';
+import { defaultDataTypeMock, getUiConfigMock } from 'src/__mocks__/getUiConfigMock';
+import { ALTINN_ROW_ID } from 'src/features/formData/types';
+import { resourcesAsMap } from 'src/features/language/textResources/TextResourcesProvider';
+import { BackendValidationSeverity } from 'src/features/validation';
+import { LikertComponent } from 'src/layout/Likert/LikertComponent';
+import { mockMediaQuery } from 'src/test/mockMediaQuery';
+import { renderWithInstanceAndLayout } from 'src/test/renderWithProviders';
+import type { IRawTextResource, TextResourceMap } from 'src/features/language/textResources';
+import type { BackendValidationIssue } from 'src/features/validation';
+import type { IRawOption } from 'src/layout/common.generated';
+import type { CompLikertExternal } from 'src/layout/Likert/config.generated';
+import type { CompLikertItemExternal } from 'src/layout/LikertItem/config.generated';
+
+let mockTextResourcesValue: TextResourceMap = {};
+
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+type TextResourcesProviderImport = typeof import('src/features/language/textResources/TextResourcesProvider');
+jest.mock<TextResourcesProviderImport>('src/features/language/textResources/TextResourcesProvider', () => ({
+  ...jest.requireActual<TextResourcesProviderImport>('src/features/language/textResources/TextResourcesProvider'),
+  useTextResources: jest.fn(() => mockTextResourcesValue),
+}));
+
+const groupBinding = 'Questions';
+const answerBinding = 'Answer';
+const questionBinding = 'Question';
+
+const generateMockFormData = (likertQuestions: IQuestion[]) => ({
+  [groupBinding]: Array.from({ length: likertQuestions.length }, (_, index) => ({
+    [ALTINN_ROW_ID]: uuidv4(),
+    [answerBinding]: likertQuestions[index].Answer,
+    [questionBinding]: likertQuestions[index].Question,
+  })),
+});
+
+export const generateValidations = (validations: { index: number; message: string }[]): BackendValidationIssue[] =>
+  validations.map(
+    ({ index, message }) =>
+      ({
+        customTextKey: message,
+        field: `${groupBinding}[${index}].${answerBinding}`,
+        dataElementId: defaultMockDataElementId,
+        severity: BackendValidationSeverity.Error,
+        source: 'custom',
+        showImmediately: true,
+      }) as unknown as BackendValidationIssue,
+  );
+
+export const defaultMockOptions: IRawOption[] = [
+  {
+    label: 'Bra',
+    value: '1',
+  },
+  {
+    label: 'Ok',
+    value: '2',
+  },
+  {
+    label: 'Dårlig',
+    value: '3',
+  },
+];
+
+const createLikertLayout = (props: Partial<CompLikertExternal> | undefined): CompLikertExternal => ({
+  id: 'likert-repeating-group-id',
+  type: 'Likert',
+  textResourceBindings: {
+    questions: 'likert-questions',
+  },
+  dataModelBindings: {
+    answer: { dataType: defaultDataTypeMock, field: `${groupBinding}.${answerBinding}` },
+    questions: { dataType: defaultDataTypeMock, field: groupBinding },
+  },
+  optionsId: 'option-test',
+  readOnly: false,
+  required: false,
+  ...props,
+});
+
+const createTextResource = (questions: IQuestion[], extraResources: IRawTextResource[]): IRawTextResource[] => [
+  {
+    id: 'likert-questions',
+    value: '{0}',
+    variables: [
+      {
+        key: `${groupBinding}[{0}].${questionBinding}`,
+        dataSource: 'dataModel.default',
+      },
+    ],
+  },
+  ...questions.map((question, index) => ({
+    id: `likert-questions-${index}`,
+    value: question.Question,
+  })),
+  ...extraResources,
+];
+
+const { setScreenWidth } = mockMediaQuery(992);
+
+interface IQuestion {
+  Question: string;
+  Answer: IRawOption['value'];
+}
+
+interface IRenderProps {
+  mobileView?: boolean;
+  mockQuestions: IQuestion[];
+  mockOptions?: IRawOption[];
+  radioButtonProps?: Partial<CompLikertItemExternal>;
+  likertProps?: Partial<CompLikertExternal>;
+  extraTextResources?: IRawTextResource[];
+  validationIssues?: BackendValidationIssue[];
+}
+
+export const render = async ({
+  mobileView = false,
+  mockQuestions,
+  mockOptions = defaultMockOptions,
+  likertProps,
+  extraTextResources = [],
+  validationIssues = [],
+}: IRenderProps) => {
+  const mockLikertLayout = createLikertLayout(likertProps);
+
+  // Set the mutable mock value before rendering
+  mockTextResourcesValue = resourcesAsMap(createTextResource(mockQuestions, extraTextResources));
+
+  window.altinnAppGlobalData.ui = getUiConfigMock((ui) => {
+    ui.folders.Task_1 = {
+      defaultDataType: defaultDataTypeMock,
+      pages: {
+        order: ['FormLayout'],
+      },
+    };
+  });
+
+  setScreenWidth(mobileView ? 600 : 1200);
+
+  return renderWithInstanceAndLayout({
+    renderer: () => (
+      <LikertComponent
+        baseComponentId={mockLikertLayout.id}
+        containerDivRef={{ current: null }}
+      />
+    ),
+    queries: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fetchOptions: async () => ({ data: mockOptions, headers: {} }) as AxiosResponse<IRawOption[], any>,
+      fetchFormBootstrapForInstance: async () =>
+        getFormBootstrapMock((obj) => {
+          obj.dataModels[defaultDataTypeMock].initialData = generateMockFormData(mockQuestions);
+          obj.dataModels[defaultDataTypeMock].initialValidationIssues = validationIssues;
+          obj.layouts = {
+            FormLayout: {
+              data: {
+                layout: [mockLikertLayout],
+              },
+            },
+          };
+        }),
+    },
+  });
+};

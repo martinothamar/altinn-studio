@@ -1,0 +1,1 @@
+export const MINIMUM_APPLICATION_VERSION_NAME = 'v8.0.0';

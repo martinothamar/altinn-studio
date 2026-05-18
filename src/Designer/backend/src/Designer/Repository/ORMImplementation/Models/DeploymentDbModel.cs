@@ -1,0 +1,42 @@
+﻿#nullable disable
+using System;
+using System.Collections.Generic;
+
+namespace Altinn.Studio.Designer.Repository.ORMImplementation.Models;
+
+public partial class DeploymentDbModel
+{
+    public long Sequenceno { get; set; }
+
+    public string Buildid { get; set; }
+
+    public string Tagname { get; set; } = null!;
+
+    public string Org { get; set; } = null!;
+
+    public string App { get; set; } = null!;
+
+    public string EnvName { get; set; } = null!;
+
+    public string Buildresult { get; set; }
+
+    public DateTime Created { get; set; }
+
+    public string CreatedBy { get; set; } = null!;
+
+    public string Entity { get; set; } = null!;
+
+    public long? InternalBuildId { get; set; }
+
+    public DeploymentType DeploymentType { get; set; } = DeploymentType.Deploy;
+
+    public BuildDbModel Build { get; set; }
+
+    public ICollection<DeployEventDbModel> Events { get; set; } = new List<DeployEventDbModel>();
+}
+
+public enum DeploymentType
+{
+    Deploy = 0,
+    Decommission = 1,
+}

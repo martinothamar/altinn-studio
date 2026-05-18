@@ -1,0 +1,185 @@
+import type {
+  CodeListDataWithTextResources,
+  CodeListReference,
+  CodeListWithMetadata,
+  TextResourceWithLanguage,
+} from '@studio/content-library';
+import { ContentLibrary } from '@studio/content-library';
+import type { ReactElement } from 'react';
+import React, { useCallback } from 'react';
+import {
+  useOptionListsQuery,
+  useOptionListsReferencesQuery,
+  useTextResourcesQuery,
+} from 'app-shared/hooks/queries';
+import { useStudioEnvironmentParams } from 'app-shared/hooks/useStudioEnvironmentParams';
+import { mapToCodeListDataList } from './utils/mapToCodeListDataList';
+import { StudioPageError, StudioPageSpinner } from '@studio/components';
+import { useTranslation } from 'react-i18next';
+import type { ApiError } from 'app-shared/types/api/ApiError';
+import { toast } from 'react-toastify';
+import type { AxiosError } from 'axios';
+import { isErrorUnknown } from 'app-shared/utils/ApiErrorUtils';
+import {
+  useAddOptionListMutation,
+  useDeleteOptionListMutation,
+  useUpdateOptionListIdMutation,
+  useUpdateOptionListMutation,
+  useUpsertTextResourceMutation,
+} from 'app-shared/hooks/mutations';
+import { mapToCodeListUsages } from './utils/mapToCodeListUsages';
+import type { OptionListData } from 'app-shared/types/OptionList';
+import type { OptionListReferences } from 'app-shared/types/OptionListReferences';
+import { mergeQueryStatuses } from 'app-shared/utils/tanstackQueryUtils';
+import type { ITextResources } from 'app-shared/types/global';
+import { convertTextResourceToMutationArgs } from './utils/convertTextResourceToMutationArgs';
+import { useGetAvailableOrgResourcesQuery } from '../../hooks/queries/useGetAvailableOrgResourcesQuery';
+import { useImportCodeListFromOrgToAppMutation } from 'app-development/hooks/mutations/useImportCodeListFromOrgToAppMutation';
+import type { ExternalResource } from 'app-shared/types/ExternalResource';
+import { RoutePaths } from '../../enums/RoutePaths';
+import { useContentLibraryRouter } from 'app-shared/hooks/useContentLibraryRouter';
+
+export default function AppContentLibrary(): React.ReactElement {
+  const { org, app } = useStudioEnvironmentParams();
+  const { t } = useTranslation();
+  const { data: optionListDataList, status: optionListDataListStatus } = useOptionListsQuery(
+    org,
+    app,
+  );
+  const { data: optionListUsages, status: optionListUsagesStatus } = useOptionListsReferencesQuery(
+    org,
+    app,
+  );
+  const { data: textResources, status: textResourcesStatus } = useTextResourcesQuery(org, app);
+  const { data: availableOrgResources, status: availableOrgResourcesStatus } =
+    useGetAvailableOrgResourcesQuery(org);
+
+  const status = mergeQueryStatuses(
+    optionListDataListStatus,
+    optionListUsagesStatus,
+    textResourcesStatus,
+    availableOrgResourcesStatus,
+  );
+
+  switch (status) {
+    case 'pending':
+      return <StudioPageSpinner spinnerTitle={t('general.loading')} />;
+    case 'error':
+      return <StudioPageError message={t('app_content_library.fetch_error')} />;
+    case 'success':
+      return (
+        <AppContentLibraryWithData
+          optionListDataList={optionListDataList}
+          optionListUsages={optionListUsages}
+          textResources={textResources}
+          availableOrgResources={availableOrgResources}
+        />
+      );
+  }
+}
+
+type AppContentLibraryWithDataProps = {
+  optionListDataList: OptionListData[];
+  optionListUsages: OptionListReferences;
+  textResources: ITextResources;
+  availableOrgResources?: ExternalResource[];
+};
+
+function AppContentLibraryWithData({
+  optionListDataList,
+  optionListUsages,
+  textResources,
+  availableOrgResources = [],
+}: AppContentLibraryWithDataProps): ReactElement {
+  const { org, app } = useStudioEnvironmentParams();
+  const { mutate: updateOptionList } = useUpdateOptionListMutation(org, app);
+  const { mutate: updateOptionListId } = useUpdateOptionListIdMutation(org, app);
+  const { mutate: deleteOptionList } = useDeleteOptionListMutation(org, app);
+  const { mutate: updateTextResource } = useUpsertTextResourceMutation(org, app);
+  const { mutate: importCodeListFromOrg } = useImportCodeListFromOrgToAppMutation(org, app);
+  const { t } = useTranslation();
+  const router = useContentLibraryRouter(`/${org}/${app}/${RoutePaths.ContentLibrary}`);
+
+  const handleUpload = useUploadOptionList(org, app);
+
+  const codeListDataList: CodeListDataWithTextResources[] =
+    mapToCodeListDataList(optionListDataList);
+
+  const codeListsUsages: CodeListReference[] = mapToCodeListUsages(optionListUsages);
+
+  const handleUpdateCodeListId = (optionListId: string, newOptionListId: string): void => {
+    updateOptionListId({ optionListId, newOptionListId });
+  };
+
+  const handleUpdate = ({ title, codeList }: CodeListWithMetadata): void => {
+    updateOptionList({ optionListId: title, optionList: codeList });
+  };
+
+  const handleCreate = ({ title, codeList }: CodeListWithMetadata): void => {
+    // OptionsController uses PUT for both creating and updating code lists
+    updateOptionList({ optionListId: title, optionList: codeList });
+  };
+
+  const handleImportCodeListFromOrg = (codeListId: string): void => {
+    importCodeListFromOrg(codeListId);
+  };
+
+  const handleUpdateTextResource = useCallback(
+    (textResourceWithLanguage: TextResourceWithLanguage): void => {
+      const mutationArgs = convertTextResourceToMutationArgs(textResourceWithLanguage);
+      updateTextResource(mutationArgs);
+    },
+    [updateTextResource],
+  );
+
+  return (
+    <div>
+      <ContentLibrary
+        heading={t('app_content_library.library_heading')}
+        router={router}
+        pages={{
+          codeListsWithTextResources: {
+            codeListDataList,
+            onCreateCodeList: handleCreate,
+            onDeleteCodeList: deleteOptionList,
+            onUpdateCodeListId: handleUpdateCodeListId,
+            onUpdateCodeList: handleUpdate,
+            onCreateTextResource: handleUpdateTextResource,
+            onUpdateTextResource: handleUpdateTextResource,
+            onUploadCodeList: handleUpload,
+            codeListsUsages,
+            textResources,
+            externalResources: availableOrgResources,
+            onImportCodeListFromOrg: handleImportCodeListFromOrg,
+          },
+          images: {
+            images: [],
+            onUpdateImage: () => {},
+          },
+        }}
+      />
+    </div>
+  );
+}
+
+function useUploadOptionList(org: string, app: string): (file: File) => void {
+  const { mutate: uploadOptionList } = useAddOptionListMutation(org, app, {
+    hideDefaultError: (error: AxiosError<ApiError>) => isErrorUnknown(error),
+  });
+  const { t } = useTranslation();
+
+  return useCallback(
+    (file: File) =>
+      uploadOptionList(file, {
+        onSuccess: () => {
+          toast.success(t('ux_editor.modal_properties_code_list_upload_success'));
+        },
+        onError: (error: AxiosError<ApiError>) => {
+          if (isErrorUnknown(error)) {
+            toast.error(t('ux_editor.modal_properties_code_list_upload_generic_error'));
+          }
+        },
+      }),
+    [uploadOptionList, t],
+  );
+}

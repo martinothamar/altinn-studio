@@ -1,0 +1,121 @@
+.heading {
+  margin-bottom: var(--fds-spacing-2);
+}
+
+.tableWrapper {
+  max-height: 550px;
+  overflow: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: var(--fds-spacing-1);
+}
+
+.tableHeaderCell,
+.tableCell {
+  vertical-align: top;
+  padding: var(--fds-spacing-2);
+}
+
+.tableCell {
+  border: unset;
+}
+
+.tableIconCell {
+  text-align: center;
+  width: 1px;
+}
+
+.canceled {
+  background-color: var(--fds-semantic-surface-warning-subtle);
+}
+.failed {
+  background-color: var(--fds-semantic-surface-danger-subtle);
+}
+.none {
+  background-color: var(--fds-semantic-surface-info-subtle);
+}
+.partiallySucceeded {
+  background-color: var(--fds-semantic-surface-warning-subtle);
+}
+.succeeded {
+  background-color: var(--fds-semantic-surface-success-subtle);
+}
+
+.icon {
+  --icon-size: var(--ds-size-9);
+  display: block;
+
+  height: var(--icon-size);
+  width: var(--icon-size);
+}
+
+.canceledIcon {
+  color: var(--fds-semantic-border-warning-default);
+}
+.failedIcon {
+  color: var(--fds-semantic-border-danger-default);
+}
+.noneIcon {
+  color: var(--fds-semantic-border-info-default);
+}
+.partiallySucceededIcon {
+  color: var(--fds-semantic-border-warning-default);
+}
+.succeededIcon {
+  color: var(--fds-semantic-border-success-default);
+}
+
+.statusCell,
+.versionCell,
+.finishedDateCell,
+.deployedByCell,
+.buildLogCell {
+  padding: var(--ds-size-4);
+}
+
+.versionCell,
+.finishedDateCell,
+.deployedByCell,
+.buildLogCell {
+  white-space: nowrap;
+}
+
+.statusCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+}
+
+.eventsDetails {
+  font-size: 0.9rem;
+}
+
+.events {
+  margin: 0;
+  padding: var(--ds-size-2) 0;
+}
+
+.event {
+  display: flex;
+  gap: var(--ds-size-4);
+  padding: var(--ds-size-2) 0;
+}
+
+.eventCreatedDate {
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.eventMessage {
+  white-space: pre-line;
+}
+.eventCreatedDate,
+.eventMessage {
+  font-family: monospace;
+  font-size: 0.8rem;
+  margin: 0;
+  word-wrap: break-word;
+}

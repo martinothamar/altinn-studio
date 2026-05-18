@@ -1,0 +1,92 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Altinn.Studio.Designer.Models;
+using Altinn.Studio.Designer.Repository.Models;
+
+namespace Altinn.Studio.Designer.Repository;
+
+/// <summary>
+/// Repository for managing chat threads and messages for the AI Assistant.
+/// </summary>
+public interface IChatRepository
+{
+    /// <summary>
+    /// Gets all threads without messages for a given user, ordered by newest first.
+    /// </summary>
+    /// <param name="context">An <see cref="AltinnRepoEditingContext"/>.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
+    Task<List<ChatThreadEntity>> GetThreadsAsync(
+        AltinnRepoEditingContext context,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// Gets a single thread
+    /// </summary>
+    /// <param name="threadId">The thread id.</param>
+    /// <param name="context">An <see cref="AltinnRepoEditingContext"/>.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
+    Task<ChatThreadEntity?> GetThreadAsync(
+        Guid threadId,
+        AltinnRepoEditingContext context,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// Creates a new chat thread.
+    /// </summary>
+    /// <param name="thread">The thread to create.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
+    /// <returns>The created thread.</returns>
+    Task<ChatThreadEntity> CreateThreadAsync(ChatThreadEntity thread, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing chat thread.
+    /// </summary>
+    /// <param name="thread">The thread with updated values.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
+    Task UpdateThreadAsync(ChatThreadEntity thread, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a chat thread and all its messages.
+    /// </summary>
+    /// <param name="id">The thread id.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
+    Task DeleteThreadAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes all chat threads with no activity since <paramref name="cutoff"/>, along with their messages.
+    /// </summary>
+    /// <param name="cutoff">Threads with last activity strictly before this timestamp are deleted.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
+    /// <returns>The number of deleted threads.</returns>
+    Task<int> DeleteInactiveThreadsAsync(DateTime cutoff, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all messages for a given thread, ordered by creation time.
+    /// </summary>
+    /// <param name="threadId">The thread id.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
+    Task<List<ChatMessageEntity>> GetMessagesAsync(Guid threadId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a new message in an existing thread.
+    /// </summary>
+    /// <param name="message">The message to create.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
+    /// <returns>The created message with generated id.</returns>
+    Task<ChatMessageEntity> CreateMessageAsync(
+        ChatMessageEntity message,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// Deletes a message from a given thread.
+    /// </summary>
+    /// <param name="threadId">The thread id.</param>
+    /// <param name="messageId">The message id.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
+    Task DeleteMessageAsync(Guid threadId, Guid messageId, CancellationToken cancellationToken = default);
+}

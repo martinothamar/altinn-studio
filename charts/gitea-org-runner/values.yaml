@@ -1,0 +1,131 @@
+# Default values for gitea-org-runner.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: altinntjenestercontainerregistry.azurecr.io/altinn-gitea-runner
+  # This sets the pull policy for images.
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+# Set to "kata-vm-isolation" to run pods in a Kata microVM on AKS Pod Sandboxing nodes.
+# Leave empty to use the default runc runtime.
+runtimeClassName: ""
+
+# Docker-in-Docker sidecar. When enabled, a privileged dockerd container is added to each
+# runner pod and DOCKER_HOST is injected into the runner container pointing at the sidecar.
+# Intended to be combined with runtimeClassName: kata-vm-isolation so "privileged"
+# is scoped to the microVM, not the host node.
+#
+# On kata, /var/lib/docker cannot use the default emptyDir (virtio-fs doesn't support
+# overlay as an upper filesystem). The sidecar's entrypoint therefore loop-mounts a
+# sparse ext4 image file at /var/lib/docker when it detects virtio-fs. diskSize controls
+# the logical size of that sparse file; physical usage grows only with actual writes.
+dockerInDocker:
+  enabled: false
+  image:
+    repository: docker
+    tag: "dind"
+    pullPolicy: IfNotPresent
+  diskSize: "15G"
+
+# Shared workspace: mounts a shared emptyDir at act_runner's cache dir in both
+# the runner and the dockerd sidecar. This makes any bind mount from the tenant's
+# workflow (including $(pwd), $GITHUB_WORKSPACE, and tools like studioctl) resolve
+# correctly across the DinD container boundary, because the docker client's
+# filesystem view (runner) and the docker daemon's filesystem view (dockerd
+# sidecar) are otherwise disjoint. The default path /root/.cache/act is where
+# act_runner stores every per-job session directory, so all workflow state lands
+# inside the shared tree automatically.
+#
+# NOTE: STUDIOCTL_HOME is set in the altinn-gitea-runner image itself
+# (Dockerfile ENV) to /root/.cache/act/studioctl, which MUST be inside
+# shareWorkspace.path. If you change `path` here, also update STUDIOCTL_HOME
+# in the runner image Dockerfile — otherwise studioctl's bind mounts will
+# fail because dockerd won't see studioctl's testdata via the shared volume.
+shareWorkspace:
+  enabled: false
+  path: "/root/.cache/act"
+  sizeLimit: "10Gi"
+
+# List of runners to deploy. Each runner will create a separate deployment.
+runners: []
+  # - name: ttd
+  #   replicas: 5
+  #   environmentVariables:
+  #     - name: GITEA_INSTANCE_URL
+  #       value: "https://gitea.example.com"
+  #     - name: GITEA_RUNNER_REGISTRATION_TOKEN
+  #       valueFrom:
+  #         secretKeyRef:
+  #           name: gitea-runner-ttd-token
+  #           key: token
+  #     - name: GITEA_RUNNER_NAME
+  #       value: "ttd-runner"
+  # - name: brg
+  #   replicas: 3
+  #   environmentVariables:
+  #     - name: GITEA_INSTANCE_URL
+  #       value: "https://gitea.example.com"
+  #     - name: GITEA_RUNNER_REGISTRATION_TOKEN
+  #       valueFrom:
+  #         secretKeyRef:
+  #           name: gitea-runner-brg-token
+  #           key: token
+  #     - name: GITEA_RUNNER_NAME
+  #       value: "brg-runner"
+
+# This is for setting Kubernetes Annotations to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+# securityContext:
+#   privileged: false
+
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

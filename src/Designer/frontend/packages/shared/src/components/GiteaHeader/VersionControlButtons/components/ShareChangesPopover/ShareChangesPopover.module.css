@@ -1,0 +1,12 @@
+.popoverContent {
+  z-index: 9999;
+  width: max-content;
+  max-width: 445px;
+}
+
+/* Styles for .pushchButton maybe will be temporary until we migrate StudioPageHeader */
+.pushButton {
+  color: var(--ds-base-contrast-default);
+  font-family: var(--studio-font-family);
+  font-size: var(--ds--body-xs-font-size);
+}

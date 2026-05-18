@@ -1,0 +1,101 @@
+import type { Locator, Page } from '@playwright/test';
+import { Routes, url } from '../helpers/routes';
+
+const SKIP_LOGIN_GUIDE_KEY = 'altinn-studio-skip-login-guide';
+
+const loginPageTexts: Record<string, string> = {
+  login: 'Logg inn',
+  username: 'Brukernavn eller e-postadresse',
+  password: 'Passord',
+  error_message: 'Brukernavn eller passord er feil.',
+  links: 'Lenker',
+  authorize: 'Autoriser applikasjon',
+};
+
+export class LoginPage {
+  private readonly authStorageFile: string = '.playwright/auth/user.json';
+  private readonly frontPageLoginButton: Locator;
+  private readonly userNameField: Locator;
+  private readonly passwordField: Locator;
+
+  constructor(public readonly page: Page) {
+    this.frontPageLoginButton = this.page.getByRole('button', { name: loginPageTexts['login'] });
+    this.userNameField = this.page.getByLabel(loginPageTexts['username']);
+    this.passwordField = this.page.getByLabel(loginPageTexts['password']);
+  }
+
+  public async goToAltinnLoginPage(): Promise<void> {
+    await this.page.goto(url(Routes.altinnLoginPage));
+  }
+
+  public async goToGiteaLoginPage(): Promise<void> {
+    await this.frontPageLoginButton.click();
+    await this.page.waitForURL(/\/repos\/user\/login/);
+  }
+
+  public async writeUsername(username: string): Promise<void> {
+    await this.userNameField.fill(username);
+  }
+
+  public async writePassword(password: string): Promise<void> {
+    await this.passwordField.fill(password);
+  }
+
+  public async pressEnterInPasswordField(): Promise<void> {
+    await this.passwordField.press('Enter');
+  }
+
+  public async clickAuthorizeButtonIfLoaded(): Promise<void> {
+    const authorizeButton = () =>
+      this.page.getByRole('button', { name: loginPageTexts['authorize'] });
+    await Promise.race([authorizeButton, this.confirmSuccessfulLogin]);
+
+    if (await authorizeButton().isVisible()) {
+      await authorizeButton().click();
+    }
+  }
+
+  public async confirmSuccessfulLogin(): Promise<void> {
+    await this.page.waitForURL(url(Routes.dashboard));
+  }
+
+  public async loginViaFakeAnsattporten(): Promise<void> {
+    await this.skipLoginGuide();
+    await this.page.getByRole('button', { name: loginPageTexts['login'] }).click();
+    await this.page.waitForURL(/\/authorize/);
+    await this.page.getByRole('button', { name: /cypress_testuser test playwright/ }).click();
+
+    const nextButton = this.page.getByRole('button', { name: 'Neste' });
+    const dashboardLoaded = this.page.waitForURL(url(Routes.dashboard));
+    const orgPickerVisible = nextButton.waitFor({ state: 'visible' });
+
+    const result = await Promise.race([
+      dashboardLoaded.then(() => 'dashboard' as const),
+      orgPickerVisible.then(() => 'orgPicker' as const),
+    ]);
+
+    if (result === 'orgPicker') {
+      await nextButton.click();
+      await this.confirmSuccessfulLogin();
+    }
+  }
+
+  private async skipLoginGuide(): Promise<void> {
+    await this.page.evaluate((key) => localStorage.setItem(key, 'true'), SKIP_LOGIN_GUIDE_KEY);
+  }
+
+  public async addSessionToSharableStorage() {
+    await this.removeSecureFlagOnCookies(); // This is necessary because secure cookies won't be added on requests that don't use HTTPS
+    return await this.page.context().storageState({ path: this.authStorageFile });
+  }
+
+  private async removeSecureFlagOnCookies(): Promise<void> {
+    const context = this.page.context();
+    const cookies = await context.cookies();
+    cookies.forEach((cookie) => {
+      cookie.secure = false;
+    });
+    await context.clearCookies();
+    await context.addCookies(cookies);
+  }
+}

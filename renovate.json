@@ -1,7 +1,39 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["local>Altinn/renovate-config"],
+  "extends": [
+    "local>Altinn/renovate-config",
+    ":prHourlyLimit4",
+    "helpers:pinGitHubActionDigestsToSemver"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "//\\.github/workflows/app-frontend-k6-browser\\.yml$//"
+      ],
+      "matchStrings": ["grafana/k6:(?<currentValue>[\\w.-]+)-with-browser"],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "grafana/k6",
+      "versioningTemplate": "docker",
+      "autoReplaceStringTemplate": "grafana/k6:{{{newValue}}}-with-browser"
+    }
+  ],
+  "separateMinorPatch": true,
+  "separateMultipleMajor": true,
+  "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
+    {
+      "description": "Disable minimum release age checks for digest updates",
+      "matchUpdateTypes": ["digest"],
+      "minimumReleaseAge": null
+    },
+    {
+      "matchManagers": ["gomod", "pep621"],
+      "groupName": "{{manager}} non-major dependencies",
+      "matchPackageNames": ["*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupSlug": "{{manager}}-minor-patch"
+    },
     {
       "groupName": "LibGit2Sharp dependency",
       "groupSlug": "LibGit2Sharp",
@@ -11,12 +43,89 @@
       "groupName": "gitea dependency",
       "groupSlug": "gitea",
       "matchPackageNames": ["gitea/gitea"]
+    },
+    {
+      "matchFileNames": ["frontend/testing/cypress/**"],
+      "ignoreDeps": ["yarn"]
+    },
+    {
+      "matchFileNames": ["src/Designer/**"],
+      "matchPackageNames": ["/^@digdir\\/designsystemet-/"],
+      "groupName": "Design system in Designer"
+    },
+    {
+      "matchFileNames": ["src/App/**"],
+      "additionalBranchPrefix": "app/",
+      "commitMessageSuffix": " (app)"
+    },
+    {
+      "matchFileNames": ["src/Runtime/localtest/**"],
+      "additionalBranchPrefix": "localtest/",
+      "commitMessageSuffix": " (localtest)"
+    },
+    {
+      "matchFileNames": ["src/Runtime/pdf3/**"],
+      "additionalBranchPrefix": "pdf3/",
+      "commitMessageSuffix": " (pdf3)"
+    },
+    {
+      "matchFileNames": ["src/App/**"],
+      "matchPackageNames": [
+        "@digdir/designsystemet-react",
+        "@digdir/designsystemet-css",
+        "@digdir/designsystemet-theme"
+      ],
+      "groupName": "Digdir design system",
+      "schedule": ["* 0-7 * * 1-5"],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "matchFileNames": ["src/App/**"],
+      "matchPackageNames": [
+        "/dotnet(-|\\/)sdk/",
+        "/^Microsoft\\.AspNetCore/",
+        "/^Microsoft\\.Extensions/",
+        "!Microsoft.Extensions.Caching.Hybrid"
+      ],
+      "allowedVersions": "<=8"
+    },
+    {
+      "matchFileNames": ["src/App/**"],
+      "matchPackageNames": [
+        "/^Microsoft\\.CodeAnalysis/",
+        "/^Microsoft\\.Build/"
+      ],
+      "enabled": false
+    },
+    {
+      "matchFileNames": [
+        "src/App/codelists/**",
+        "src/App/fileanalyzers/**",
+        "src/App/Designer/**"
+      ],
+      "ignoreDeps": ["Altinn.App.Core"]
+    },
+    {
+      "matchFileNames": ["src/App/Designer/**"],
+      "ignoreDeps": [
+        "Moq",
+        "Basic.Reference.Assemblies",
+        "Microsoft.CodeAnalysis.CSharp",
+        "Microsoft.CodeAnalysis.Common"
+      ]
+    },
+    {
+      "matchFileNames": [
+        "src/Altinn.Platform/**",
+        "src/test/**",
+        "src/Runtime/localtest/**",
+        "src/App/frontend/**",
+        "src/App/backend/**",
+        "src/App/fileanalyzers/**",
+        "src/App/codelists/**"
+      ],
+      "enabled": false
     }
   ],
-  "ignorePaths": ["testdata/**", "src/**"],
-  "ignoreDeps": [
-    "Moq",
-    "Altinn.App.Core"
-  ],
-  "schedule": ["before 07:00 on Monday"]
+  "schedule": []
 }

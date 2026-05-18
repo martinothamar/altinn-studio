@@ -1,0 +1,89 @@
+import { ValidationMask } from 'src/features/validation';
+import type {
+  AnyValidation,
+  BaseValidation,
+  FieldValidations,
+  ValidationMaskKeys,
+  ValidationSeverity,
+} from 'src/features/validation';
+import type { CompExternal } from 'src/layout/layout';
+
+export function mergeFieldValidations(...X: (FieldValidations | undefined)[]): FieldValidations {
+  if (X.length === 0) {
+    return {};
+  }
+
+  if (X.length === 1) {
+    return X[0] ?? {};
+  }
+
+  const [X1, ...XRest] = X;
+  const out = X1 ? structuredClone(X1) : {};
+  for (const Xn of XRest) {
+    if (!Xn) {
+      continue;
+    }
+    for (const [field, validations] of Object.entries(structuredClone(Xn))) {
+      if (!out[field]) {
+        out[field] = [];
+      }
+      out[field].push(...validations);
+    }
+  }
+  return out;
+}
+
+function isOfSeverity<V extends BaseValidation, S extends ValidationSeverity>(severity: S) {
+  return (validation: V): validation is V & { severity: S } => validation.severity === severity;
+}
+export function validationsOfSeverity<I extends BaseValidation, S extends ValidationSeverity>(
+  validations: I[] | undefined,
+  severity: S,
+) {
+  return validations?.filter(isOfSeverity(severity)) ?? [];
+}
+
+export function hasValidationErrors<V extends BaseValidation>(validations: V[] | undefined): boolean {
+  return validations?.some((validation) => validation.severity === 'error') ?? false;
+}
+
+export function isValidationVisible<T extends AnyValidation>(validation: T, mask: number): boolean {
+  if (validation.category === 0) {
+    return true;
+  }
+
+  return (mask & validation.category) > 0;
+}
+
+export function selectValidations<T extends BaseValidation>(
+  validations: T[],
+  mask: number,
+  severity?: ValidationSeverity,
+) {
+  const filteredValidations = severity ? validationsOfSeverity(validations, severity) : validations;
+  return filteredValidations.filter((validation) => isValidationVisible(validation, mask));
+}
+
+export function getInitialMaskFromItem(item: CompExternal | undefined): number {
+  if (!item) {
+    return 0;
+  }
+
+  const showValidations = 'showValidations' in item ? item.showValidations : null;
+  // If not set, null, or undefined, default to all validations except required
+  if (!showValidations) {
+    return ValidationMask.AllExceptRequired;
+  }
+  return getVisibilityMask(showValidations);
+}
+
+export function getVisibilityMask(maskKeys?: ValidationMaskKeys[]): number {
+  let mask = 0;
+  if (!maskKeys) {
+    return mask;
+  }
+  for (const maskKey of maskKeys) {
+    mask |= ValidationMask[maskKey];
+  }
+  return mask;
+}

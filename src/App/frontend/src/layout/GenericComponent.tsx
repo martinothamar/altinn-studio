@@ -1,0 +1,311 @@
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router';
+import type { SetURLSearchParams } from 'react-router';
+
+import classNames from 'classnames';
+
+import { FatalError } from 'src/app-components/error/FatalError/FatalError';
+import { FatalErrorEmpty } from 'src/app-components/error/FatalErrorEmpty/FatalErrorEmpty';
+import { Flex } from 'src/app-components/Flex/Flex';
+import { SearchParams } from 'src/core/routing/types';
+import { useIsNavigating } from 'src/core/routing/useIsNavigating';
+import { useDevToolsStore } from 'src/features/devtools/data/DevToolsStore';
+import { ExprVal } from 'src/features/expressions/types';
+import { FormStore } from 'src/features/form/FormContext';
+import { Lang } from 'src/features/language/Lang';
+import { replaceAndPreventResetOptions } from 'src/features/navigation/navigationOptions';
+import { FormComponentContextProvider } from 'src/layout/FormComponentContext';
+import classes from 'src/layout/GenericComponent.module.css';
+import { getComponentDef } from 'src/layout/index';
+import { SummaryComponentFor } from 'src/layout/Summary/SummaryComponent';
+import { pageBreakStyles } from 'src/utils/formComponentUtils';
+import { isDev } from 'src/utils/isDev';
+import { ComponentErrorBoundary } from 'src/utils/layout/ComponentErrorBoundary';
+import { useIndexedId } from 'src/utils/layout/DataModelLocation';
+import { useEvalExpression } from 'src/utils/layout/generator/useEvalExpression';
+import { useIsHidden } from 'src/utils/layout/hidden';
+import { useExternalItem } from 'src/utils/layout/hooks';
+import type { EvalExprOptions } from 'src/features/expressions';
+import type { IGridStyling } from 'src/layout/common.generated';
+import type { GenericComponentOverrideDisplay, IFormComponentContext } from 'src/layout/FormComponentContext';
+import type { PropsFromGenericComponent } from 'src/layout/index';
+import type { CompInternal, CompTypes } from 'src/layout/layout';
+import type { AnyComponent } from 'src/layout/LayoutComponent';
+
+export interface IGenericComponentProps<Type extends CompTypes> {
+  baseComponentId: string;
+  overrideItemProps?: Partial<Omit<CompInternal<Type>, 'id'>>;
+  overrideDisplay?: GenericComponentOverrideDisplay;
+}
+
+function NonMemoGenericComponent<Type extends CompTypes = CompTypes>({
+  baseComponentId,
+  overrideItemProps,
+  overrideDisplay,
+}: IGenericComponentProps<Type>) {
+  const nodeId = useIndexedId(baseComponentId);
+  const generatorErrors = FormStore.nodes.useNodeData(nodeId, undefined, (node) => node.errors);
+
+  if (generatorErrors && Object.keys(generatorErrors).length > 0) {
+    return (
+      <ComponentErrorList
+        baseComponentId={baseComponentId}
+        errors={Object.keys(generatorErrors)}
+      />
+    );
+  }
+
+  return (
+    <ComponentErrorBoundary nodeId={nodeId}>
+      <ActualGenericComponent<Type>
+        baseComponentId={baseComponentId}
+        overrideItemProps={overrideItemProps}
+        overrideDisplay={overrideDisplay}
+      />
+    </ComponentErrorBoundary>
+  );
+}
+const MemoGenericComponent = React.memo(NonMemoGenericComponent);
+MemoGenericComponent.displayName = 'GenericComponent';
+export const GenericComponent = MemoGenericComponent as typeof NonMemoGenericComponent;
+
+function ActualGenericComponent<Type extends CompTypes = CompTypes>({
+  baseComponentId,
+  overrideItemProps,
+  overrideDisplay,
+}: IGenericComponentProps<Type>) {
+  const component = useExternalItem(baseComponentId);
+  const grid = overrideItemProps?.grid ?? component?.grid;
+  const renderAsSummary =
+    overrideItemProps && 'renderAsSummary' in overrideItemProps && overrideItemProps.renderAsSummary !== undefined
+      ? overrideItemProps.renderAsSummary
+      : component && 'renderAsSummary' in component
+        ? component.renderAsSummary
+        : undefined;
+  const pageBreakUnresolved = component?.pageBreak;
+  const options: EvalExprOptions<ExprVal.String> = {
+    returnType: ExprVal.String,
+    defaultValue: '',
+    errorIntroText: `Invalid expression for component ${baseComponentId}`,
+  };
+  const breakBefore = useEvalExpression(pageBreakUnresolved?.breakBefore, options);
+  const breakAfter = useEvalExpression(pageBreakUnresolved?.breakAfter, options);
+  const pageBreak = overrideItemProps?.pageBreak ?? { breakBefore, breakAfter };
+  const nodeId = useIndexedId(baseComponentId);
+  const containerDivRef = React.useRef<HTMLDivElement | null>(null);
+  const hiddenState = useIsHidden(baseComponentId, { includeReason: true });
+  const howToHide = useDevToolsStore((state) => (state.isOpen ? state.hiddenComponents : 'hide'));
+
+  useHandleFocusComponent(nodeId, containerDivRef);
+
+  useEffect(() => {
+    if (containerDivRef.current && hiddenState.reason === 'forcedByDeVTools' && howToHide === 'disabled') {
+      containerDivRef.current.style.filter = 'contrast(0.75)';
+    } else if (containerDivRef.current) {
+      containerDivRef.current.style.filter = '';
+    }
+  }, [hiddenState, howToHide]);
+
+  const formComponentContext = useMemo<IFormComponentContext>(
+    () => ({
+      grid,
+      baseComponentId,
+      overrideItemProps,
+      overrideDisplay,
+    }),
+    [grid, baseComponentId, overrideItemProps, overrideDisplay],
+  );
+
+  if (hiddenState.hidden) {
+    return null;
+  }
+
+  const layoutComponent = getComponentDef(component.type);
+  const RenderComponent = layoutComponent.render as AnyComponent<Type>['render'];
+
+  const componentProps: PropsFromGenericComponent<Type> = {
+    containerDivRef,
+    baseComponentId,
+    overrideItemProps,
+    overrideDisplay,
+  };
+
+  if (renderAsSummary) {
+    const RenderSummary =
+      'renderSummary' in layoutComponent ? layoutComponent.renderSummary.bind(layoutComponent) : null;
+    if (!RenderSummary) {
+      return null;
+    }
+
+    return (
+      <SummaryComponentFor
+        targetBaseComponentId={baseComponentId}
+        overrides={{
+          display: { hideChangeButton: true, hideValidationMessages: true },
+        }}
+      />
+    );
+  }
+
+  if (overrideDisplay?.directRender || layoutComponent.directRender()) {
+    return (
+      <FormComponentContextProvider value={formComponentContext}>
+        <RenderComponent
+          {...componentProps}
+          ref={containerDivRef}
+        />
+      </FormComponentContextProvider>
+    );
+  }
+
+  return (
+    <FormComponentContextProvider value={formComponentContext}>
+      <Flex
+        data-componentbaseid={baseComponentId}
+        data-componentid={nodeId}
+        data-componenttype={component.type}
+        ref={containerDivRef}
+        item
+        container
+        size={grid}
+        key={`grid-${nodeId}`}
+        className={classNames(classes.container, gridToClasses(grid?.labelGrid, classes), pageBreakStyles(pageBreak))}
+      >
+        <RenderComponent {...componentProps} />
+      </Flex>
+    </FormComponentContextProvider>
+  );
+}
+
+const gridToClasses = (labelGrid: IGridStyling | undefined, classes: { [key: string]: string }) => {
+  if (!labelGrid) {
+    return {};
+  }
+
+  return {
+    [classes.xs]: labelGrid.xs !== undefined && labelGrid.xs !== 'auto' && labelGrid.xs > 0 && labelGrid.xs < 12,
+    [classes.sm]: labelGrid.sm !== undefined && labelGrid.sm !== 'auto' && labelGrid.sm > 0 && labelGrid.sm < 12,
+    [classes.md]: labelGrid.md !== undefined && labelGrid.md !== 'auto' && labelGrid.md > 0 && labelGrid.md < 12,
+    [classes.lg]: labelGrid.lg !== undefined && labelGrid.lg !== 'auto' && labelGrid.lg > 0 && labelGrid.lg < 12,
+    [classes.xl]: labelGrid.xl !== undefined && labelGrid.xl !== 'auto' && labelGrid.xl > 0 && labelGrid.xl < 12,
+  };
+};
+
+export function ComponentErrorList({ baseComponentId, errors }: { baseComponentId: string; errors: string[] }) {
+  if (!isDev()) {
+    return <FatalErrorEmpty />;
+  }
+
+  return (
+    <FatalError className={classes.errorFallback}>
+      <h3>
+        <Lang
+          id='config_error.component_has_errors'
+          params={[baseComponentId]}
+        />
+      </h3>
+      <ul>
+        {errors.map((error) => (
+          <li key={error}>{error}</li>
+        ))}
+      </ul>
+      <p>
+        <Lang id='config_error.component_has_errors_after' />
+      </p>
+    </FatalError>
+  );
+}
+
+function useHandleFocusComponent(nodeId: string, containerDivRef: React.RefObject<HTMLDivElement | null>) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const indexedId = searchParams.get(SearchParams.FocusComponentId);
+  const errorBinding = searchParams.get(SearchParams.FocusErrorBinding);
+
+  const abortController = useRef(new AbortController());
+  const pathnameWas = window.location.pathname;
+  const isNavigating = useIsNavigating();
+  const shouldFocus = indexedId && indexedId == nodeId && !isNavigating;
+
+  useEffect(() => {
+    const div = containerDivRef.current;
+    if (shouldFocus && div) {
+      try {
+        requestAnimationFrame(() => {
+          !abortController.current.signal.aborted && div.scrollIntoView({ behavior: 'instant' });
+        });
+
+        const field = findElementToFocus(div, errorBinding);
+        if (field && !abortController.current.signal.aborted) {
+          field.focus();
+        }
+      } finally {
+        if (!abortController.current.signal.aborted && pathnameWas === window.location.pathname) {
+          // Only cleanup when pathname is the same as what it was during render. Navigation might have occurred, especially
+          // in Cypress tests where state changes will happen rapidly. These search params are cleaned up in
+          // useNavigatePage() automatically, so it shouldn't be a problem if the page has been changed. If something
+          // else happens, we'll re-render and get a new chance to clean up later.
+          cleanupQuery(searchParams, setSearchParams);
+        }
+      }
+    }
+  }, [containerDivRef, errorBinding, pathnameWas, nodeId, searchParams, setSearchParams, shouldFocus]);
+
+  useEffect(
+    () => () => {
+      // Abort on unmount so that we do not keep trying to focus this component
+      abortController.current.abort();
+    },
+    [abortController],
+  );
+}
+
+function cleanupQuery(searchParams: URLSearchParams, setSearchParams: SetURLSearchParams) {
+  if (searchParams.has(SearchParams.FocusComponentId) || searchParams.has(SearchParams.FocusErrorBinding)) {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete(SearchParams.FocusComponentId);
+    newSearchParams.delete(SearchParams.FocusErrorBinding);
+    setSearchParams(newSearchParams, replaceAndPreventResetOptions);
+  }
+}
+
+export function findElementToFocus(div: HTMLDivElement | null, binding: string | null) {
+  if (!div) {
+    return undefined;
+  }
+
+  const targetElements = Array.from(
+    div.querySelectorAll<HTMLElement>(
+      ['input', 'textarea', 'select', 'button', '[tabindex]:not([tabindex="-1"])', '[contenteditable="true"]'].join(
+        ',',
+      ),
+    ),
+  );
+
+  if (targetElements.length === 0) {
+    return undefined;
+  }
+
+  const hasBinding = binding !== null;
+
+  if (hasBinding) {
+    const matchesBinding = (element: HTMLElement) => element.dataset.bindingkey === binding;
+    const bindingInput = targetElements.find(
+      (element) => matchesBinding(element) && element.matches('input,textarea,select'),
+    );
+    if (bindingInput) {
+      return bindingInput;
+    }
+
+    const anyBinding = targetElements.find(matchesBinding);
+    if (anyBinding) {
+      return anyBinding;
+    }
+  }
+
+  const firstInputLike = targetElements.find((element) => element.matches('input,textarea,select'));
+  if (firstInputLike) {
+    return firstInputLike;
+  }
+
+  return targetElements[0];
+}

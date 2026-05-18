@@ -1,0 +1,38 @@
+{
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:21383/",
+      "sslPort": 0
+    }
+  },
+  "profiles": {
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "AltinnCoreDesigner": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "launchUrl": "http://studio.localhost/",
+      "applicationUrl": "http://0.0.0.0:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "AltinnStudioOsX": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ServiceRepositorySettings__RepositoryLocation": "/tmp/altinn/repos/",
+        "ALTINN_KEYS_DIRECTORY": "/tmp/altinn/keys/",
+        "DOTNET_ROLL_FORWARD": "Major"
+      }
+    }
+  }
+}

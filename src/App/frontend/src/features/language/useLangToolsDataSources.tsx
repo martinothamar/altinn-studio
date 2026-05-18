@@ -1,0 +1,38 @@
+import { useMemo } from 'react';
+
+import { useApplicationSettings } from 'src/features/applicationSettings/ApplicationSettingsProvider';
+import { useDataModelReaders } from 'src/features/formData/FormDataReaders';
+import { useInstanceDataSources } from 'src/features/instance/InstanceContext';
+import { useCurrentLanguage } from 'src/features/language/LanguageProvider';
+import { useTextResources } from 'src/features/language/textResources/TextResourcesProvider';
+import { getLanguageFromCode } from 'src/language/languages';
+import type { TextResourceMap } from 'src/features/language/textResources';
+import type { BaseTextResourceVariablesDataSources } from 'src/features/language/useLanguage';
+import type { FixedLanguageList } from 'src/language/languages';
+
+export interface LangDataSources extends BaseTextResourceVariablesDataSources {
+  textResources: TextResourceMap;
+  selectedLanguage: string;
+  language: FixedLanguageList;
+}
+
+export function useLangToolsDataSources(): LangDataSources {
+  const textResources = useTextResources();
+  const selectedAppLanguage = useCurrentLanguage();
+  const dataModels = useDataModelReaders();
+  const applicationSettings = useApplicationSettings();
+  const instanceDataSources = useInstanceDataSources();
+
+  return useMemo(
+    () => ({
+      textResources,
+      language: getLanguageFromCode(selectedAppLanguage),
+      selectedLanguage: selectedAppLanguage,
+      dataModels,
+      applicationSettings,
+      instanceDataSources,
+      customTextParameters: null,
+    }),
+    [textResources, selectedAppLanguage, dataModels, applicationSettings, instanceDataSources],
+  );
+}

@@ -1,0 +1,17 @@
+.loading {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--ds-size-2);
+}
+
+.branchList {
+  max-height: calc(100vh - 23rem); /* Scales well up to 200% zoom */
+  overflow-y: auto;
+}
+
+/* Style for .branchButton is temporary until we migrate to StudioPageHeader */
+.branchButton {
+  color: var(--ds-base-contrast-default);
+  font-family: var(--studio-font-family);
+  font-size: var(--ds--body-xs-font-size);
+}

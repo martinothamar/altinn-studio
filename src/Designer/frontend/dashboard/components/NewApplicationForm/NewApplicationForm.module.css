@@ -1,0 +1,13 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 600px;
+  margin-bottom: var(--fds-spacing-8);
+}
+
+.actionContainer {
+  display: inline-flex;
+  align-items: center;
+  gap: 24px;
+}

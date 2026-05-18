@@ -1,0 +1,13 @@
+import type { ReactElement } from 'react';
+import classes from './NoItemSelectedMessage.module.css';
+import { StudioLabelAsParagraph } from '@studio/components';
+import { useTranslation } from 'react-i18next';
+
+export const NoItemSelectedMessage = (): ReactElement => {
+  const { t } = useTranslation();
+  return (
+    <StudioLabelAsParagraph className={classes.noItem}>
+      {t('schema_editor.no_item_selected')}
+    </StudioLabelAsParagraph>
+  );
+};

@@ -1,0 +1,58 @@
+package caching
+
+import (
+	"context"
+	"sync"
+	"time"
+
+	opclock "altinn.studio/operator/internal/clock"
+)
+
+type CachedAtom[T any] struct {
+	currentFetchedAt time.Time
+	clock            opclock.Clock
+	retriever        func(ctx context.Context) (*T, error)
+	current          *T
+	expireAfter      time.Duration
+	mutex            sync.RWMutex
+}
+
+func NewCachedAtom[T any](
+	expireAfter time.Duration,
+	clock opclock.Clock,
+	retriever func(ctx context.Context) (*T, error),
+) CachedAtom[T] {
+	return CachedAtom[T]{
+		mutex:       sync.RWMutex{},
+		clock:       clock,
+		expireAfter: expireAfter,
+		retriever:   retriever,
+	}
+}
+
+func (c *CachedAtom[T]) Get(ctx context.Context) (*T, error) {
+	c.mutex.RLock()
+	now := c.clock.Now()
+	if c.currentFetchedAt.IsZero() || now.Sub(c.currentFetchedAt) > c.expireAfter {
+		c.mutex.RUnlock()
+		c.mutex.Lock()
+		defer c.mutex.Unlock()
+
+		now = c.clock.Now()
+		if now.Sub(c.currentFetchedAt) <= c.expireAfter {
+			return c.current, nil
+		}
+
+		value, err := c.retriever(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		c.current = value
+		c.currentFetchedAt = now
+		return c.current, nil
+	}
+	defer c.mutex.RUnlock()
+
+	return c.current, nil
+}

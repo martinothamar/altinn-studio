@@ -1,0 +1,39 @@
+// TODO: Extract/Centralize react-router routes (https://github.com/Altinn/altinn-studio/issues/12624)
+export const APP_DEVELOPMENT_BASENAME = '/editor';
+export const APP_DASHBOARD_BASENAME = 'app-dashboard';
+export const DASHBOARD_BASENAME = '/dashboard';
+export const DASHBOARD_ROOT_ROUTE = '/';
+export const ADMIN_BASENAME = '/admin';
+export const RESOURCEADM_BASENAME = '/resourceadm';
+export const ORG_LIBRARY_BASENAME = 'org-library';
+export const PREVIEW_BASENAME = '/preview';
+export const STUDIO_ROOT_BASENAME = '/info';
+export const SETTINGS_BASENAME = '/settings';
+export const DISPLAY_NAME = 'Altinn Studio';
+export const DEFAULT_LANGUAGE = 'nb';
+export const BASE_CONTAINER_ID = '__base__';
+export const AUTOSAVE_DEBOUNCE_INTERVAL_MILLISECONDS = 400;
+export const NEWS_EXPIRATION_TIME_IN_DAYS = 30;
+export const APP_NAME = 'appName';
+export const DEFAULT_SELECTED_LAYOUT_NAME = 'default';
+export const TASKID_FOR_STATELESS_APPS = 'Task_1';
+export const MAX_NESTED_GROUP_LEVEL = 2;
+export const PROD_ENV_TYPE = 'production';
+export const PROTECTED_TASK_NAME_CUSTOM_RECEIPT = 'CustomReceipt';
+export const PREVIEW_MOCK_PARTY_ID = '51001';
+export const PREVIEW_MOCK_INSTANCE_GUID = 'f1e23d45-6789-1bcd-8c34-56789abcdef0';
+export const MEDIA_QUERY_MAX_WIDTH = '(max-width: 1024px)';
+export const DATA_MODEL_NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+export const MINIMUM_SUPPORTED_FRONTEND_VERSION = 3;
+export const MAXIMUM_SUPPORTED_FRONTEND_VERSION = 4;
+export const NEXT_V9_VERSION = 9;
+export const MINIMUM_SUPPORTED_BACKEND_VERSION = 7;
+export const MAXIMUM_SUPPORTED_BACKEND_VERSION = 8;
+export const CODE_LIST_FOLDER = 'CodeLists';
+export const PUBLISHED_CODE_LIST_FOLDER = 'code_lists';
+export const DEFAULT_APP_BRANCH = 'master';
+export const DEFAULT_RIGHTS_DESCRIPTION = {
+  nb: 'Ved å gi tilgang til denne tjenesten gir du en annen person fullmakt til å bruke den på dine vegne. Les beskrivelsen av tjenesten for mer informasjon om hva tilgangen innebærer.',
+  nn: 'Når du gir tilgang til denne tenesta, gir du ein annan person fullmakt til å bruka ho på dine vegner. Les skildringa av tenesta for meir informasjon om kva tilgangen inneber.',
+  en: 'By granting access to this service, you are authorising another person to use it on your behalf. Please read the service description for more information about what this access entails.',
+};

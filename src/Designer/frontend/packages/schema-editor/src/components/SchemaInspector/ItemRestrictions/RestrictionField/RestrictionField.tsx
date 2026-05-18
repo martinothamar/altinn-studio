@@ -1,0 +1,43 @@
+import type { BaseSyntheticEvent, ChangeEvent } from 'react';
+import { makeDomFriendlyID } from '../../../../utils/ui-schema-utils';
+import { StudioTextfield } from '@studio/components';
+
+export interface IRestrictionFieldProps {
+  className?: string;
+  keyName: string;
+  label: string;
+  onChangeValue: (id: string, key: string, value: string) => void;
+  onReturn?: (e: BaseSyntheticEvent) => void;
+  path: string;
+  readOnly?: boolean;
+  value?: string;
+}
+
+export const RestrictionField = ({
+  className,
+  keyName,
+  label,
+  onChangeValue,
+  path,
+  readOnly,
+  value,
+}: IRestrictionFieldProps) => {
+  const fieldId = makeDomFriendlyID(path, { suffix: `${keyName}-value` });
+  const handleChange = ({ target }: ChangeEvent<HTMLInputElement>) => {
+    const element = target as HTMLInputElement;
+    if (element.value !== value) {
+      onChangeValue(path, keyName, element.value);
+    }
+  };
+  return (
+    <div className={className}>
+      <StudioTextfield
+        id={fieldId}
+        label={label}
+        onChange={handleChange}
+        readOnly={readOnly}
+        value={value ?? ''}
+      />
+    </div>
+  );
+};

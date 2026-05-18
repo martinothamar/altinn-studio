@@ -1,0 +1,35 @@
+#nullable disable
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Altinn.Studio.Designer.Services.Models;
+
+namespace Altinn.Studio.Designer.Services.Interfaces;
+
+public interface IEnvironmentsService
+{
+    /// <summary>
+    /// Gets list of environments
+    /// </summary>
+    /// <returns>List of environments</returns>
+    Task<List<EnvironmentModel>> GetEnvironments();
+
+    Task<IEnumerable<EnvironmentModel>> GetOrganizationEnvironments(
+        string org,
+        CancellationToken cancellationToken = default
+    );
+
+    Task<Uri> CreatePlatformUri(string envName);
+
+    Task<Uri> GetAppClusterUri(string org, string envName);
+
+    Task<string> GetHostNameByEnvName(string envName);
+
+    /// <summary>
+    /// Gets the organization number for a given organization identifier, e.g. "ttd"
+    /// </summary>
+    /// <param name="org">Organization identifier</param>
+    /// <returns>Organization number</returns>
+    Task<string> GetAltinnOrgNumber(string org);
+}

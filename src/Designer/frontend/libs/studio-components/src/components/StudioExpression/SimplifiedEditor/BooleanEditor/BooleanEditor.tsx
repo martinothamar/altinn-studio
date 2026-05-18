@@ -1,0 +1,35 @@
+import type { SimplifiedExpression } from '../../types/SimplifiedExpression';
+import { DEFAULT_LOGICAL_EXPRESSION } from '../../config';
+import { StudioBooleanToggleGroup } from '../../../StudioBooleanToggleGroup';
+import { StudioButton } from '../../../StudioButton';
+import React from 'react';
+import classes from './BooleanEditor.module.css';
+import { useStudioExpressionContext } from '../../StudioExpressionContext';
+
+export type BooleanEditorProps = {
+  expression: boolean;
+  onChange: (expression: SimplifiedExpression) => void;
+};
+
+export const BooleanEditor = ({ expression, onChange }: BooleanEditorProps): React.ReactElement => {
+  const { texts } = useStudioExpressionContext();
+
+  const handleSwitchToLogical: React.MouseEventHandler<HTMLButtonElement> = () =>
+    onChange(DEFAULT_LOGICAL_EXPRESSION);
+
+  return (
+    <div className={classes.booleanEditor}>
+      <StudioBooleanToggleGroup
+        className={classes.toggle}
+        data-toggle-group=' ' // Todo: Give this element a name: https://github.com/Altinn/altinn-studio/issues/18503
+        falseLabel={texts.false}
+        onChange={onChange}
+        trueLabel={texts.true}
+        value={expression}
+      />
+      <StudioButton variant='secondary' onClick={handleSwitchToLogical}>
+        {texts.transformToLogical}
+      </StudioButton>
+    </div>
+  );
+};

@@ -9,9 +9,22 @@ export var baseUrls = {
   prod: 'altinn.no',
 };
 
+// Auth cookie names in the different environments. NB: Must be updated until changes
+// are rolled out to all environments
+export var authCookieNames = {
+  at21: '.AspxAuthCloud',
+  at22: '.AspxAuthCloud',
+  at23: '.AspxAuthCloud',
+  at24: '.AspxAuthCloud',
+  tt02: '.AspxAuthTT02',
+  yt01: '.AspxAuthYt',
+  prod: '.AspxAuthProd',
+};
+
 //Get values from environment
 const environment = __ENV.env.toLowerCase();
 export let baseUrl = baseUrls[environment];
+export let authCookieName = authCookieNames[environment];
 
 //Altinn API
 export var authentication = {
@@ -53,11 +66,6 @@ export var platformAuthorization = {
   getRules: `https://platform.${baseUrl}/authorization/api/v1/delegations/GetRules`,
   deleteRules: `https://platform.${baseUrl}/authorization/api/v1/delegations/DeleteRules`,
   deletePolicy: `https://platform.${baseUrl}/authorization/api/v1/delegations/DeletePolicy`,
-};
-
-//PDF
-export var platformPdf = {
-  generate: 'https://platform.' + baseUrl + '/pdf/api/v1/generate',
 };
 
 //Receipt
@@ -185,9 +193,9 @@ export var appResources = {
   textresources: '/api/textresources',
   applicationmetadata: '/api/v1/applicationmetadata',
   servicemetadata: '/api/metadata/ServiceMetadata',
-  formlayout: '/api/resource/FormLayout.json',
-  rulehandler: '/api/resource/RuleHandler.js',
-  ruleconfiguration: '/api/resource/RuleConfiguration.json',
+  formlayout: '/api/layouts/form',
+  rulehandler: '/api/rulehandler/form',
+  ruleconfiguration: '/api/ruleconfiguration/form',
   texts: '/api/v1/texts/',
   jsonschema: '/api/jsonschema/',
   layoutsettings: '/api/layoutsettings',

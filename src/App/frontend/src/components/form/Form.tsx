@@ -1,0 +1,290 @@
+import React, { useEffect, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
+
+import { Flex } from 'src/app-components/Flex/Flex';
+import classes from 'src/components/form/Form.module.css';
+import { MessageBanner } from 'src/components/form/MessageBanner';
+import { ErrorReport, ErrorReportList } from 'src/components/message/ErrorReport';
+import { ReadyForPrint } from 'src/components/ReadyForPrint';
+import { Loader } from 'src/core/loading/Loader';
+import { SearchParams } from 'src/core/routing/types';
+import { useIsNavigating } from 'src/core/routing/useIsNavigating';
+import { useAppName, useAppOwner } from 'src/core/texts/appTexts';
+import { getApplicationMetadata } from 'src/features/applicationMetadata';
+import { useAllAttachments } from 'src/features/attachments/hooks';
+import { FileScanResults } from 'src/features/attachments/types';
+import { FormStore } from 'src/features/form/FormContext';
+import { useUiConfigContext } from 'src/features/form/layout/UiConfigContext';
+import { usePageSettings } from 'src/features/form/layoutSettings/processLayoutSettings';
+import { useLaxInstanceId } from 'src/features/instance/InstanceContext';
+import { useTextResources } from 'src/features/language/textResources/TextResourcesProvider';
+import { useLanguage } from 'src/features/language/useLanguage';
+import { replaceAndPreventResetOptions } from 'src/features/navigation/navigationOptions';
+import { useOnFormSubmitValidation } from 'src/features/validation/callbacks/onFormSubmitValidation';
+import { useTaskErrors } from 'src/features/validation/selectors/taskErrors';
+import { useQueryKey } from 'src/hooks/navigation';
+import { useAsRef } from 'src/hooks/useAsRef';
+import { useCurrentView, useNavigatePage, useStartUrl } from 'src/hooks/useNavigatePage';
+import { getComponentCapabilities } from 'src/layout';
+import { GenericComponent } from 'src/layout/GenericComponent';
+import { getPageTitle } from 'src/utils/getPageTitle';
+import type { AnyValidation, BaseValidation, NodeRefValidation } from 'src/features/validation';
+
+interface FormState {
+  hasRequired: boolean;
+  mainIds: string[];
+  errorReportIds: string[];
+  formErrors: NodeRefValidation<AnyValidation<'error'>>[];
+  taskErrors: BaseValidation<'error'>[];
+}
+
+export function Form() {
+  const currentPageId = useCurrentView();
+
+  return <FormPage currentPageId={currentPageId} />;
+}
+
+export function FormPage({ currentPageId }: { currentPageId: string | undefined }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const shouldValidateFormPage = searchParams.get(SearchParams.Validate);
+  const onFormSubmitValidation = useOnFormSubmitValidation();
+  const { isValidPageId } = useNavigatePage();
+  const shouldNavigateToStart = !currentPageId || !isValidPageId(currentPageId);
+
+  useEffect(() => {
+    if (shouldValidateFormPage && !shouldNavigateToStart) {
+      onFormSubmitValidation();
+      setSearchParams((params) => {
+        const nextParams = new URLSearchParams(params);
+        nextParams.delete(SearchParams.Validate);
+        return nextParams;
+      }, replaceAndPreventResetOptions);
+    }
+  }, [onFormSubmitValidation, searchParams, setSearchParams, shouldValidateFormPage, shouldNavigateToStart]);
+
+  const appName = useAppName();
+  const appOwner = useAppOwner();
+  const { langAsString } = useLanguage();
+  const { hasRequired, mainIds, errorReportIds, formErrors, taskErrors } = useFormState(currentPageId);
+  const requiredFieldsMissing = FormStore.nodes.usePageHasVisibleRequiredValidations(currentPageId);
+  const allAttachments = useAllAttachments();
+  const textResources = useTextResources();
+
+  const hasInfectedFiles = Object.values(allAttachments || {}).some((attachments) =>
+    (attachments || []).some(
+      (attachment) => attachment.uploaded && attachment.data.fileScanResult === FileScanResults.Infected,
+    ),
+  );
+
+  useRedirectToStoredPage();
+  useSetExpandedWidth();
+
+  if (shouldNavigateToStart) {
+    return <NavigateToStartUrl />;
+  }
+
+  const hasSetCurrentPageId = currentPageId in textResources;
+
+  if (!hasSetCurrentPageId) {
+    window.logWarnOnce(
+      `You have not set a page title for this page. This is highly recommended for user experience and WCAG compliance and will be required in the future.
+       To add a title to this page, add this to your language resource file (for example language.nb.json):
+
+      {
+        "id": "${currentPageId}",
+         "value": "Your custom title goes here"
+      }`,
+    );
+  }
+
+  return (
+    <>
+      <title>{`${getPageTitle(appName, hasSetCurrentPageId ? langAsString(currentPageId) : undefined, appOwner)}`}</title>
+      {hasRequired && (
+        <MessageBanner
+          error={requiredFieldsMissing}
+          messageKey='form_filler.required_description'
+        />
+      )}
+      <Flex
+        container
+        spacing={6}
+        alignItems='flex-start'
+      >
+        {mainIds.map((id) => (
+          <GenericComponent
+            key={id}
+            baseComponentId={id}
+          />
+        ))}
+        <Flex
+          item={true}
+          size={{ xs: 12 }}
+          aria-live='polite'
+          className={classes.errorReport}
+        >
+          <ErrorReport
+            show={formErrors.length > 0 || taskErrors.length > 0 || hasInfectedFiles}
+            errors={
+              <ErrorReportList
+                formErrors={formErrors}
+                taskErrors={taskErrors}
+              />
+            }
+          >
+            {errorReportIds.map((id) => (
+              <GenericComponent
+                key={id}
+                baseComponentId={id}
+              />
+            ))}
+          </ErrorReport>
+        </Flex>
+      </Flex>
+      <ReadyForPrint type='load' />
+      <HandleNavigationFocusComponent />
+    </>
+  );
+}
+
+/**
+ * Redirects users that had a stored page in their local storage to the correct
+ * page, and later removes this currentViewCacheKey from localstorage, as
+ * it is no longer needed.
+ */
+function useRedirectToStoredPage() {
+  const pageKey = useCurrentView();
+  const { isValidPageId, navigateToPage } = useNavigatePage();
+  const applicationMetadataId = getApplicationMetadata()?.id;
+
+  const instanceId = useLaxInstanceId();
+  const currentViewCacheKey = instanceId ?? applicationMetadataId;
+
+  useEffect(() => {
+    if (!pageKey && !!currentViewCacheKey) {
+      const lastVisitedPage = localStorage.getItem(currentViewCacheKey);
+      if (lastVisitedPage !== null && isValidPageId(lastVisitedPage)) {
+        localStorage.removeItem(currentViewCacheKey);
+        navigateToPage(lastVisitedPage, { replace: true });
+      }
+    }
+  }, [pageKey, currentViewCacheKey, isValidPageId, navigateToPage]);
+}
+
+/**
+ * Sets the expanded width for the current page if it is defined in the currently viewed layout-page
+ */
+function useSetExpandedWidth() {
+  const currentPageId = useCurrentView();
+  const expandedPagesFromLayout = FormStore.bootstrap.useExpandedWidthLayouts();
+  const expandedWidthFromSettings = usePageSettings().expandedWidth;
+  const { setExpandedWidth } = useUiConfigContext();
+
+  useEffect(() => {
+    let defaultExpandedWidth = false;
+    if (currentPageId && expandedPagesFromLayout[currentPageId] !== undefined) {
+      defaultExpandedWidth = !!expandedPagesFromLayout[currentPageId];
+    } else if (expandedWidthFromSettings !== undefined) {
+      defaultExpandedWidth = expandedWidthFromSettings;
+    }
+    setExpandedWidth(defaultExpandedWidth);
+  }, [currentPageId, expandedPagesFromLayout, expandedWidthFromSettings, setExpandedWidth]);
+}
+
+const emptyArray = [];
+function useFormState(currentPageId: string | undefined): FormState {
+  const lookups = FormStore.bootstrap.useLayoutLookups();
+  const topLevelIds = currentPageId ? (lookups.topLevelComponents[currentPageId] ?? emptyArray) : emptyArray;
+  const { formErrors, taskErrors } = useTaskErrors();
+  const hasErrors = Boolean(formErrors.length) || Boolean(taskErrors.length);
+
+  const [mainIds, errorReportIds] = useMemo(() => {
+    if (!hasErrors) {
+      return [topLevelIds, emptyArray];
+    }
+
+    const toMainLayout: string[] = [];
+    const toErrorReport: string[] = [];
+
+    for (const id of [...topLevelIds].reverse()) {
+      const type = lookups.allComponents[id]?.type;
+      if (!type) {
+        continue;
+      }
+
+      const capabilities = getComponentCapabilities(type);
+      const isButtonLike = type === 'ButtonGroup' || (capabilities.renderInButtonGroup && type !== 'Custom');
+      if (isButtonLike && toMainLayout.length === 0) {
+        toErrorReport.push(id);
+      } else {
+        toMainLayout.push(id);
+      }
+    }
+
+    return [toMainLayout.reverse(), toErrorReport.reverse()];
+  }, [hasErrors, lookups.allComponents, topLevelIds]);
+
+  const hasRequired =
+    (currentPageId &&
+      lookups.allPerPage[currentPageId]?.some((id) => {
+        const layout = lookups.allComponents[id];
+        return layout && 'required' in layout && layout.required !== false;
+      })) ||
+    false;
+
+  return {
+    hasRequired,
+    mainIds,
+    errorReportIds,
+    formErrors,
+    taskErrors,
+  };
+}
+
+function HandleNavigationFocusComponent() {
+  const onFormSubmitValidation = useOnFormSubmitValidation();
+  const exitSubform = useQueryKey(SearchParams.ExitSubform)?.toLocaleLowerCase() === 'true';
+  const validate = useQueryKey(SearchParams.Validate)?.toLocaleLowerCase() === 'true';
+  const navigate = useNavigate();
+  const locationRef = useAsRef(useLocation());
+
+  React.useEffect(() => {
+    (async () => {
+      // Replace URL if we have query params
+      if (exitSubform || validate) {
+        const searchParams = new URLSearchParams(locationRef.current.search);
+        searchParams.delete(SearchParams.ExitSubform);
+        const basePath = locationRef.current.pathname;
+        const nextLocation = searchParams.size > 0 ? `${basePath}?${searchParams.toString()}` : basePath;
+        navigate(nextLocation, replaceAndPreventResetOptions);
+      }
+    })();
+  }, [navigate, locationRef, exitSubform, validate, onFormSubmitValidation]);
+
+  return null;
+}
+
+/**
+ * TODO: Move to route loader.
+ * This can't move to a route loader yet because it depends on hidden page filtering, which requires
+ * React context (layout data, form data, expression evaluation).
+ *
+ * To remove this: move hidden-page awareness into the page route loader so it can redirect
+ * before rendering, then replace the Form.tsx usage with a loader-level redirect.
+ */
+function NavigateToStartUrl() {
+  const navigate = useNavigate();
+  const startUrl = useStartUrl();
+  const location = useLocation();
+  const isNavigating = useIsNavigating();
+
+  const currentLocation = location.pathname + location.search;
+
+  useEffect(() => {
+    if (currentLocation !== startUrl && !isNavigating) {
+      navigate(startUrl, { replace: true });
+    }
+  }, [currentLocation, navigate, startUrl, isNavigating]);
+
+  return <Loader reason='navigate-to-start' />;
+}

@@ -1,0 +1,213 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <PreserveCompilationContext>true</PreserveCompilationContext>
+    <AssemblyName>Altinn.Studio.Designer</AssemblyName>
+    <Company>Altinn</Company>
+    <TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
+    <TypeScriptCompileBlocked>True</TypeScriptCompileBlocked>
+    <MvcRazorExcludeRefAssembliesFromPublish>false</MvcRazorExcludeRefAssembliesFromPublish>
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+    <UserSecretsId>c958e7e5-da9b-411d-8ee0-70bcfe1f64ed</UserSecretsId>
+    <RootNamespace>Altinn.Studio.Designer</RootNamespace>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <Nullable>enable</Nullable>
+    <Configurations>Release;Debug</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Altinn.App.Core" />
+    <PackageReference Include="Altinn.Authorization.ABAC" />
+    <PackageReference Include="Altinn.ApiClients.Maskinporten" />
+    <PackageReference Include="Altinn.Common.AccessToken" />
+    <PackageReference Include="Altinn.Common.AccessTokenClient" />
+    <PackageReference Include="Altinn.Platform.Storage.Interface" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" />
+    <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" />
+    <PackageReference Include="CompilerAttributes" />
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="Confluent.SchemaRegistry" />
+    <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json" />
+    <PackageReference Include="DistributedLock.Postgres" />
+    <PackageReference Include="DotNetEnv" />
+    <PackageReference Include="ini-parser-netstandard" />
+    <PackageReference Include="JWTCookieAuthentication" />
+    <PackageReference Include="LibGit2Sharp" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Quartz" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.StackExchangeRedis" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.Client" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.AzureKeyVault" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
+    <PackageReference Include="Microsoft.Azure.KeyVault" />
+    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" />
+    <PackageReference Include="Microsoft.VisualStudio.Web.BrowserLink" />
+    <PackageReference Include="HtmlAgilityPack" />
+    <PackageReference Include="Microsoft.DiaSymReader.Native" />
+    <PackageReference Include="NJsonSchema" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="NuGet.Versioning" />
+    <PackageReference Include="Polly" />
+    <PackageReference Include="Quartz" />
+    <PackageReference Include="Quartz.Extensions.DependencyInjection" />
+    <PackageReference Include="Quartz.Extensions.Hosting" />
+    <PackageReference Include="Quartz.Serialization.SystemTextJson" />
+    <PackageReference Include="Scriban" />
+    <PackageReference Include="Scrutor" />
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="wwwroot/**/*;Views/**/*;Areas/**/Views;">
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <Watch Include="**\*.cs;**\*.csproj" Exclude="node_modules\**\*;**\*.js.map;obj\**\*;bin\**\*;**\*.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <CoreTemplates Include="../Templates/**/*" />
+    <CoreTestdata Include="../Testdata/**/*" />
+    <CoreLanguage Include="../Common/Languages/ini/*" />
+    <Compile Remove="Controllers\ManualTestingController.cs" />
+    <None Remove="jwtselfsignedcert.pfx" />
+    <Watch Remove="Configuration\CacheSettings.cs" />
+    <Watch Remove="Configuration\ResourceRegistryEnvironmentSettings.cs" />
+    <Watch Remove="Configuration\ResourceRegistryIntegrationSettings.cs" />
+    <Watch Remove="Configuration\ResourceRegistryMaskinportenIntegrationSettings.cs" />
+    <Watch Remove="Controllers\PolicyController.cs" />
+    <Watch Remove="Configuration\MaskinportenClientSettings.cs" />
+    <Watch Remove="Controllers\ResourceAdmController.cs" />
+    <Watch Remove="Controllers\ResourceAdminController.cs" />
+    <Watch Remove="Enums\ReferenceSource.cs" />
+    <Watch Remove="Enums\ReferenceType.cs" />
+    <Watch Remove="Enums\ResourceType.cs" />
+    <Watch Remove="Enums\ServiceType.cs" />
+    <Watch Remove="Exceptions\HttpStatusException.cs" />
+    <Watch Remove="Helpers\OrgUtil.cs" />
+    <Watch Remove="Helpers\ResourceAdminHelper.cs" />
+    <Watch Remove="Infrastructure\Authorization\GiteaPublishResourcePermissionHandler.cs" />
+    <Watch Remove="Infrastructure\Authorization\GiteaPublishResourcePermissionRequirement.cs" />
+    <Watch Remove="Infrastructure\Authorization\GiteaResourceAccessListPermissionHandler.cs" />
+    <Watch Remove="Infrastructure\Authorization\GiteaResourceAccessListPermissionRequirement.cs" />
+    <Watch Remove="Models\AccessList.cs" />
+    <Watch Remove="Models\AccessListMember.cs" />
+    <Watch Remove="Models\AvailableService.cs" />
+    <Watch Remove="Models\BrregPartyResultSet.cs" />
+    <Watch Remove="Models\CompetentAuthority.cs" />
+    <Watch Remove="Models\ConceptSchema.cs" />
+    <Watch Remove="Models\ContactPoint.cs" />
+    <Watch Remove="Models\CreateAccessListModel.cs" />
+    <Watch Remove="Models\DataTheme.cs" />
+    <Watch Remove="Models\DataThemesContainer.cs" />
+    <Watch Remove="Models\Dto\AccessListInfoDtoPaginated.cs" />
+    <Watch Remove="Models\Dto\AccessListMember.cs" />
+    <Watch Remove="Models\Dto\AccessListResourceConnection.cs" />
+    <Watch Remove="Models\EuroVocTerm.cs" />
+    <Watch Remove="Models\EuroVocTerms.cs" />
+    <Watch Remove="Models\GiteaCommit.cs" />
+    <Watch Remove="Models\GiteaRepoCommitInfo.cs" />
+    <Watch Remove="Models\GiteaRepoCommitMeta.cs" />
+    <Watch Remove="Models\GiteaRepoCommitUser.cs" />
+    <Watch Remove="Models\GiteaRepoPayloadCommitVerification.cs" />
+    <Watch Remove="Models\GiteaRepoPayloadUser.cs" />
+    <Watch Remove="Models\GiteaUser.cs" />
+    <Watch Remove="Models\Keyword.cs" />
+    <Watch Remove="Models\ListviewServiceResource.cs" />
+    <Watch Remove="Models\LosTerm.cs" />
+    <Watch Remove="Models\LosTerms.cs" />
+    <Watch Remove="Models\Org.cs" />
+    <Watch Remove="Models\OrgList.cs" />
+    <Watch Remove="Models\PagedAccessListResponse.cs" />
+    <Watch Remove="Models\ResourceAccessList.cs" />
+    <Watch Remove="Models\ResourcePartyType.cs" />
+    <Watch Remove="Models\ResourceReference.cs" />
+    <Watch Remove="Models\ResourceVersionInfo.cs" />
+    <Watch Remove="Models\ServiceResource.cs" />
+    <Watch Remove="Models\UpsertAccessListResourceConnectionDto.cs" />
+    <Watch Remove="RepositoryClient\Client\PolicyOptionsClient.cs" />
+    <Watch Remove="RepositoryClient\Model\CommitAffectedFile.cs" />
+    <Watch Remove="RepositoryClient\Model\ContentsResponse.cs" />
+    <Watch Remove="RepositoryClient\Model\FileLinksResponse.cs" />
+    <Watch Remove="RepositoryClient\Model\GiteaRepoCommitStats.cs" />
+    <Watch Remove="Services\Implementation\OrgService.cs" />
+    <Watch Remove="Services\Implementation\PolicyOptionsService.cs" />
+    <Watch Remove="Services\Implementation\ResourceRegistryAdminService.cs" />
+    <Watch Remove="Services\Implementation\ResourceService.cs" />
+    <Watch Remove="Services\Interfaces\IOrgService.cs" />
+    <Watch Remove="Services\Interfaces\IResourceRegistry.cs" />
+    <Watch Remove="Services\Interfaces\IPolicyOptions.cs" />
+    <Watch Remove="Services\Interfaces\IResourceRegistryAdmin.cs" />
+    <Watch Remove="Services\Interfaces\IResourceService.cs" />
+    <Watch Remove="TypedHttpClients\Altinn2Metadata\Altinn2MetadataClient.cs" />
+    <Watch Remove="TypedHttpClients\Altinn2Metadata\IAltinn2MetadataClient.cs" />
+    <Watch Remove="TypedHttpClients\ResourceRegistryOptions\IResourceRegistryOptions.cs" />
+    <Watch Remove="TypedHttpClients\ResourceRegistryOptions\ResourceRegistryOptionsClient.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\PolicyAdmin\PolicyAdmin.csproj" />
+    <ProjectReference Include="..\DataModeling\DataModeling.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="Schemas\customtemplate.schema.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Views\Home\AppToken.cshtml">
+      <Pack>$(IncludeRazorContentInPack)</Pack>
+    </Content>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <EmbeddedResource Include="Services\Implementation\ProcessModeling\Templates\**\*.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations/SqlScripts/**/*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Services/Implementation/GitOps/Templates/**/*.yaml" />
+  </ItemGroup>
+  <Target Name="AfterPublishScript" AfterTargets="Publish">
+    <MakeDir Directories="$(PublishDir)Templates" Condition="!Exists('$(PublishDir)Templates')" />
+    <MakeDir Directories="$(PublishDir)Testdata" Condition="!Exists('$(PublishDir)Testdata')" />
+    <MakeDir Directories="$(PublishDir)Languages" Condition="!Exists('$(PublishDir)Languages')" />
+    <Copy SourceFiles="@(CoreTemplates)" DestinationFolder="$(PublishDir)Templates\%(RecursiveDir)" />
+    <Copy SourceFiles="@(CoreTestdata)" DestinationFolder="$(PublishDir)Testdata\%(RecursiveDir)" />
+    <Copy SourceFiles="@(CoreLanguage)" DestinationFolder="$(PublishDir)Languages" />
+  </Target>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>bin\Release</OutputPath>
+    <DocumentationFile>bin\Release\AltinnCore.Designer.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+</Project>

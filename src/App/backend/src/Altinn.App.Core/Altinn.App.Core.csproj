@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PackageTags>Altinn;Studio;App;Core</PackageTags>
+    <Description>
+      This class library holds all the core features used by a standard Altinn 3 App.
+    </Description>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JWTCookieAuthentication"/>
+    <!-- The follwoing are depencencies for JWTCookieAuthentication, but we need newer versions-->
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
+    <PackageReference Include="Microsoft.Rest.ClientRuntime" />
+    <PackageReference Include="Microsoft.Rest.ClientRuntime.Azure" />
+    <PackageReference Include="System.Text.RegularExpressions" />
+    <!-- End JWTCookieAuthentication deps -->
+
+    <PackageReference Include="Altinn.Common.AccessTokenClient"/>
+    <!-- End frozen versions -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Altinn.Common.EFormidlingClient"/>
+    <PackageReference Include="Altinn.Common.PEP"/>
+    <PackageReference Include="Altinn.Platform.Models"/>
+    <PackageReference Include="Altinn.Platform.Storage.Interface"/>
+    <PackageReference Include="JsonPatch.Net"/>
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore"/>
+    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid"/>
+    <PackageReference Include="Microsoft.FeatureManagement.AspNetCore"/>
+    <PackageReference Include="Newtonsoft.Json"/>
+    <PackageReference Include="NetEscapades.EnumGenerators" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="OpenTelemetry.Api"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Internal analyzers are for analysis of _our_ code, so we reference this project as an analyzer (it's a build-time dep) -->
+    <ProjectReference Include="../Altinn.App.Internal.Analyzers/Altinn.App.Internal.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Altinn.App.Api" />
+
+    <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+    <InternalsVisibleTo Include="Altinn.App.Api.Tests" />
+    <InternalsVisibleTo Include="Altinn.App.SourceGenerator.Integration.Tests" />
+    <InternalsVisibleTo Include="Altinn.App.Benchmarks" />
+    <InternalsVisibleTo Include="Altinn.App.Tests.Common" />
+    <InternalsVisibleTo Include="Altinn.App.Clients.Fiks" />
+    <InternalsVisibleTo Include="Altinn.App.Clients.Fiks.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    <InternalsVisibleTo Include="Altinn.Application.For.IntegrationTesting" />
+    <InternalsVisibleTo Include="Altinn.Application.For.IntegrationTesting.Scenario" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,39 @@
+.resourceNameAndId {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+  padding: var(--ds-size-4) 0;
+}
+
+.textfieldWrapper {
+  width: 80%;
+}
+
+.idText {
+  font-size: var(--ds-font-size-1);
+  font-weight: 600;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--ds-color-background-tinted);
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--ds-color-border-default);
+  border-radius: 1px;
+  margin-right: 10px;
+}
+
+.editButtonWrapper {
+  margin-left: 20px;
+}
+
+.editFieldWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.buttonWrapper {
+  display: flex;
+  align-self: flex-end;
+  margin-left: var(--ds-size-2);
+}

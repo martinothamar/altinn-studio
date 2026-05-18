@@ -1,0 +1,25 @@
+.deployPageWrapper {
+  width: 90%;
+  margin: 0;
+  padding: var(--ds-size-10);
+}
+
+.contentWrapper {
+  width: 40rem;
+}
+
+.informationText {
+  margin-top: var(--ds-size-7);
+}
+
+.environmentWrapper {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: var(--ds-size-5);
+}
+
+.newVersionWrapper {
+  margin-top: var(--ds-size-7);
+  width: 100%;
+  margin-bottom: var(--ds-size-10);
+}

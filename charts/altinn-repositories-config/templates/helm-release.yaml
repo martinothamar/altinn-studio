@@ -1,5 +1,5 @@
 ---
-apiVersion: helm.toolkit.fluxcd.io/v2beta1
+apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: altinn-repositories
@@ -25,4 +25,7 @@ spec:
   values:
     image:
       tag: "{{ .Values.imageTag }}"
+    proxy:
+      image:
+        tag: "{{ .Values.imageTag }}"
     environment: "{{ .Values.environmentName }}"

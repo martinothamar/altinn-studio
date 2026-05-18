@@ -1,11 +1,22 @@
 *
-!frontend
-!backend
-!development/azure-devops-mock
+!src/Designer/frontend
+!src/Designer/backend
+!src/Designer/development/azure-devops-mock
 !package.json
-!environments.json
 !yarn.lock
 !.yarn*
-**/node_modules
+!src/App/frontend/package.json
+!src/App/template/src
+!libs/form-component
+!libs/form-engine
+
+# Test-apps are built in its own container, so they need to be included
+!src/App/backend
+!src/App/fileanalyzers
+!src/App/codelists
+!src/test/apps
+
+# Exclusions (will also be excluded from previously included directories)
 **/bin
 **/obj
+**/node_modules

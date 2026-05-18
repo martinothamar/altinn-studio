@@ -1,0 +1,141 @@
+using System.Text.Json;
+using Altinn.App.Core.Internal.App;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Altinn.App.Core.Internal.AltinnCdn;
+
+internal static class AltinnCdnClientDI
+{
+    internal static void AddAltinnCdnClient(this IServiceCollection services)
+    {
+        services.AddHybridCache();
+        services.AddHttpClient(nameof(AltinnCdnClient));
+        services.AddSingleton<IAltinnCdnClient, AltinnCdnClient>();
+    }
+}
+
+internal sealed class AltinnCdnClient : IAltinnCdnClient
+{
+    private const string CacheKey = "altinn-cdn-org-details";
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+
+    private static readonly HybridCacheEntryOptions _cacheOptions = new()
+    {
+        Expiration = TimeSpan.FromHours(24),
+        LocalCacheExpiration = TimeSpan.FromHours(24),
+    };
+
+    private readonly HybridCache _cache;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IAppMetadata _appMetadata;
+
+    private AltinnCdnOrgDetails? _lastKnownGood;
+
+    public AltinnCdnClient(HybridCache cache, IHttpClientFactory httpClientFactory, IAppMetadata appMetadata)
+    {
+        _cache = cache;
+        _httpClientFactory = httpClientFactory;
+        _appMetadata = appMetadata;
+    }
+
+    public async Task<AltinnCdnOrgDetails?> GetOrgDetails(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _cache.GetOrCreateAsync(
+                CacheKey,
+                FetchOrgDetails,
+                _cacheOptions,
+                cancellationToken: cancellationToken
+            );
+        }
+        catch (Exception ex)
+            when (_lastKnownGood is not null && !cancellationToken.IsCancellationRequested && IsTransientError(ex))
+        {
+            // Return stale data on transient errors (but not caller cancellation)
+            // Cache miss means next call will retry (with stampede protection from HybridCache)
+            return _lastKnownGood;
+        }
+    }
+
+    private async ValueTask<AltinnCdnOrgDetails?> FetchOrgDetails(CancellationToken cancellationToken)
+    {
+        using var httpClient = _httpClientFactory.CreateClient(nameof(AltinnCdnClient));
+        using var response = await httpClient.GetAsync("https://altinncdn.no/orgs/altinn-orgs.json", cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+        if (
+            doc.RootElement.ValueKind != JsonValueKind.Object
+            || !doc.RootElement.TryGetProperty("orgs", out var orgsElement)
+        )
+        {
+            throw new JsonException("Missing 'orgs' property in Altinn CDN response");
+        }
+
+        var appMetadata = await _appMetadata.GetApplicationMetadata();
+
+        // Only deserialize the org we care about - other orgs with bad data won't affect us
+        if (!orgsElement.TryGetProperty(appMetadata.Org, out var orgElement))
+        {
+            return null;
+        }
+
+        var orgDetails =
+            orgElement.Deserialize<AltinnCdnOrgDetails>(_jsonOptions)
+            ?? throw new JsonException($"Org '{appMetadata.Org}' deserialized to null");
+
+        // Inject Digdir's organisation number for TTD, because TTD does not have an organisation number
+        if (
+            string.Equals(appMetadata.Org, "ttd", StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrEmpty(orgDetails.Orgnr)
+            && orgsElement.TryGetProperty("digdir", out var digdirElement)
+        )
+        {
+            var digdirDetails = digdirElement.Deserialize<AltinnCdnOrgDetails>(_jsonOptions);
+            if (!string.IsNullOrEmpty(digdirDetails?.Orgnr))
+            {
+                orgDetails.Orgnr = digdirDetails.Orgnr;
+            }
+        }
+
+        _lastKnownGood = orgDetails;
+        return orgDetails;
+    }
+
+    public async Task<AltinnCdnOrgName?> GetOrgNameByAppId(string appId, CancellationToken cancellationToken = default)
+    {
+        using var httpClient = _httpClientFactory.CreateClient(nameof(AltinnCdnClient));
+        using var response = await httpClient.GetAsync("https://altinncdn.no/orgs/altinn-orgs.json", cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+        if (
+            doc.RootElement.ValueKind != JsonValueKind.Object
+            || !doc.RootElement.TryGetProperty("orgs", out var orgsElement)
+        )
+        {
+            throw new JsonException("Missing 'orgs' property in Altinn CDN response");
+        }
+
+        string orgAcronym = appId.Split('/')[0];
+
+        foreach (var property in orgsElement.EnumerateObject())
+        {
+            if (property.Name.Equals(orgAcronym, StringComparison.OrdinalIgnoreCase))
+            {
+                return property.Value.Deserialize<AltinnCdnOrgDetails>(_jsonOptions)?.Name;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsTransientError(Exception ex) =>
+        ex is HttpRequestException or TaskCanceledException or OperationCanceledException or JsonException;
+}

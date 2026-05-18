@@ -1,0 +1,101 @@
+import type { ReactElement, ChangeEvent } from 'react';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { StudioSearch } from '@studio/components';
+import { getUpdatedRules } from '../../../../utils/PolicyRuleUtils';
+import { usePolicyEditorContext } from '../../../../contexts/PolicyEditorContext';
+import { usePolicyRuleContext } from '../../../../contexts/PolicyRuleContext';
+import classes from './PolicyAccessPackages.module.css';
+import {
+  filterAccessPackagesByIsResourcePolicyAvailable,
+  filterAccessPackagesBySearchString,
+  groupAccessPackagesByArea,
+  isAccessPackageSelected,
+} from './policyAccessPackageUtils';
+import { AllAccessPackages } from './AllAccessPackages';
+import type { PolicyAccessPackageAreaGroup } from 'app-shared/types/PolicyAccessPackages';
+
+interface PolicyAccessPackagesProps {
+  isPersonSubject?: boolean;
+  accessPackages: PolicyAccessPackageAreaGroup[];
+}
+
+export const PolicyAccessPackages = ({
+  isPersonSubject,
+  accessPackages,
+}: PolicyAccessPackagesProps): ReactElement => {
+  const { t } = useTranslation();
+  const { policyRules, setPolicyRules, savePolicy } = usePolicyEditorContext();
+  const { policyRule, policyError, setPolicyError } = usePolicyRuleContext();
+
+  const [searchValue, setSearchValue] = useState<string>('');
+
+  const groupedDelegableAccessPackagesByArea = useMemo(() => {
+    const areas = groupAccessPackagesByArea(accessPackages);
+    return filterAccessPackagesByIsResourcePolicyAvailable(areas);
+  }, [accessPackages]);
+
+  const handleSelectAccessPackage = (packageUrn: string): void => {
+    const isChecked = isAccessPackageSelected(packageUrn, policyRule.accessPackages);
+
+    if (isChecked) {
+      handleDeselectAccessPackage(packageUrn);
+    } else {
+      handleSelectNewAccessPackage(packageUrn);
+    }
+  };
+
+  const handleDeselectAccessPackage = (packageUrn: string): void => {
+    const urnsToSave = policyRule.accessPackages.filter((x) => x !== packageUrn);
+    handleAccessPackageChange(urnsToSave);
+  };
+
+  const handleSelectNewAccessPackage = (packageUrn: string): void => {
+    const urnsToSave = [...policyRule.accessPackages, packageUrn];
+    handleAccessPackageChange(urnsToSave);
+  };
+
+  const handleAccessPackageChange = (newSelectedAccessPackageUrns: string[]): void => {
+    const updatedRules = getUpdatedRules(
+      {
+        ...policyRule,
+        accessPackages: newSelectedAccessPackageUrns,
+      },
+      policyRule.ruleId,
+      policyRules,
+    );
+    setPolicyRules(updatedRules);
+    savePolicy(updatedRules);
+    setPolicyError({
+      ...policyError,
+      subjectsError: newSelectedAccessPackageUrns.length === 0 && policyRule.subject.length === 0,
+    });
+  };
+
+  const handleSearch = (event: ChangeEvent<HTMLInputElement>): void => {
+    setSearchValue(event.target.value);
+  };
+
+  const accessPackagesToRender = filterAccessPackagesBySearchString(
+    groupedDelegableAccessPackagesByArea,
+    searchValue,
+  );
+
+  return (
+    <div className={classes.accessPackages}>
+      <StudioSearch
+        label=''
+        aria-label={t('policy_editor.access_package_search')}
+        value={searchValue}
+        onChange={handleSearch}
+      />
+      <AllAccessPackages
+        chosenAccessPackages={policyRule.accessPackages}
+        accessPackagesToRender={accessPackagesToRender}
+        searchValue={searchValue}
+        isPersonSubject={isPersonSubject}
+        handleSelectAccessPackage={handleSelectAccessPackage}
+      />
+    </div>
+  );
+};

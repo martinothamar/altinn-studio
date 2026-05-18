@@ -1,8 +1,0 @@
-.container {
-  display: flex;
-  flex-direction: row;
-}
-
-.alert {
-  margin: var(--fds-spacing-6);
-}

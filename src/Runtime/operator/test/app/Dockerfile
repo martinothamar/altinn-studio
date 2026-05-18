@@ -1,0 +1,29 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine@sha256:608d8a4b570b88bd8b1fbb792f00cee88d557eee3a56ebf06b359fdea05a50ed AS build
+WORKDIR /App
+
+COPY /App/App.csproj .
+RUN dotnet restore App.csproj
+
+COPY /App .
+
+RUN dotnet publish App.csproj --configuration Release --output /app_output
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine@sha256:354c2fcfb3c23abc60d98f0380cdb403fba844a62a123b6343a8c9611209995c AS final
+EXPOSE 5005
+WORKDIR /App
+COPY --from=build /app_output .
+ENV ASPNETCORE_URLS=
+
+# setup the user and group
+# busybox doesn't include longopts, so the options are roughly
+# -g --gid
+# -u --uid
+# -G --group
+# -D --disable-password
+# -s --shell
+RUN addgroup -g 3000 dotnet && adduser -u 1000 -G dotnet -D -s /bin/false dotnet
+
+USER dotnet
+RUN mkdir /tmp/logtelemetry
+
+ENTRYPOINT ["dotnet", "App.dll"]

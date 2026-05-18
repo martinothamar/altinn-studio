@@ -1,0 +1,109 @@
+import React from 'react';
+
+import { act, screen } from '@testing-library/react';
+import { userEvent } from '@testing-library/user-event';
+
+import { getApplicationMetadataMock } from 'src/__mocks__/getApplicationMetadataMock';
+import { getLogoMock } from 'src/__mocks__/getLogoMock';
+import { getProfileMock } from 'src/__mocks__/getProfileMock';
+import { LogoColor } from 'src/components/logo/AltinnLogo';
+import { AppHeader } from 'src/components/presentation/AppHeader/AppHeader';
+import { renderWithInstanceAndLayout } from 'src/test/renderWithProviders';
+import { PartyType } from 'src/types/shared';
+import type { ApplicationMetadata } from 'src/features/applicationMetadata/types';
+import type { IRawTextResource } from 'src/features/language/textResources';
+import type { IAppLanguage, IParty, IProfile } from 'src/types/shared';
+
+describe('presentation/AppHeader', () => {
+  beforeEach(() => {
+    window.altinnAppGlobalData.orgLogoUrl = 'https://altinncdn.no/orgs/mockOrg/mockOrg.png';
+    window.altinnAppGlobalData.orgName = { nb: 'Mockdepartementet', en: 'Mock Ministry', nn: 'Mockdepartementet' };
+  });
+
+  afterEach(() => {
+    window.altinnAppGlobalData.userProfile = undefined;
+    window.altinnAppGlobalData.orgLogoUrl = undefined;
+    window.altinnAppGlobalData.orgName = undefined;
+  });
+
+  const userPerson = {
+    party: {
+      name: 'Test Testesen',
+      ssn: '01010000000',
+      partyId: 12345,
+      partyTypeName: PartyType.Person,
+    },
+  } as IProfile & { party: IParty };
+
+  const partyOrg = {
+    orgNumber: '12345678',
+    partyId: 54321,
+    name: 'Bedrift',
+    partyTypeName: PartyType.Organisation,
+  } as IParty;
+
+  const headerBackgroundColor = 'blue';
+
+  interface IRenderComponentProps {
+    party: IParty;
+    user?: IProfile;
+    logo?: ApplicationMetadata['logo'];
+    showLanguageSelector?: boolean;
+    languageResponse?: IAppLanguage[];
+    textResources?: IRawTextResource[];
+  }
+  const render = async ({ logo, showLanguageSelector = false, textResources = [] }: IRenderComponentProps) => {
+    window.altinnAppGlobalData.applicationMetadata = getApplicationMetadataMock({ logo });
+    window.altinnAppGlobalData.textResources!.resources = textResources;
+    window.altinnAppGlobalData.ui.settings = { showLanguageSelector };
+
+    return await renderWithInstanceAndLayout({
+      renderer: () => (
+        <AppHeader
+          logoColor={LogoColor.blueDarker}
+          headerBackgroundColor={headerBackgroundColor}
+        />
+      ),
+    });
+  };
+
+  it('should render menu with logout option when clicking profile icon', async () => {
+    window.altinnAppGlobalData.userProfile = getProfileMock();
+    await render({ party: partyOrg });
+    expect(
+      screen.queryByRole('menuitem', {
+        name: /logg ut/i,
+        hidden: true,
+      }),
+    ).toBeNull();
+
+    await act(() =>
+      userEvent.click(
+        screen.getByRole('button', {
+          name: /Profil ikon knapp/i,
+        }),
+      ),
+    );
+    expect(
+      screen.getByRole('link', {
+        name: /logg ut/i,
+        hidden: true,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('Should render Altinn logo if logo options are not set', async () => {
+    window.altinnAppGlobalData.orgLogoUrl = undefined;
+    await render({ party: userPerson.party });
+    const mockLogo = getLogoMock().replace('black', LogoColor.blueDarker);
+    expect(screen.getByRole('img')).toHaveAttribute('src', `data:image/svg+xml;utf8,${encodeURIComponent(mockLogo)}`);
+  });
+
+  it('Should render Organisation logo if logo options are set', async () => {
+    await render({
+      party: userPerson.party,
+      logo: { source: 'org', displayAppOwnerNameInHeader: false },
+    });
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://altinncdn.no/orgs/mockOrg/mockOrg.png');
+  });
+});

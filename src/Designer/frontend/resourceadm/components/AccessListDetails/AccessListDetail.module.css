@@ -1,0 +1,11 @@
+.accessListDetailWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-9);
+  max-width: 50rem;
+  margin: var(--ds-size-9) var(--ds-size-4);
+}
+
+.deleteIcon {
+  font-size: var(--ds-font-size-6);
+}

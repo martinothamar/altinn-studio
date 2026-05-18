@@ -1,0 +1,13 @@
+.popoverContent {
+  display: block;
+  z-index: 9999;
+  width: max-content;
+  max-width: 445px;
+}
+
+/* Styles for .fetchButton maybe will be temporary until we migrate StudioPageHeader */
+.fetchButton {
+  color: var(--ds-base-contrast-default);
+  font-family: var(--studio-font-family);
+  font-size: var(--ds--body-xs-font-size);
+}

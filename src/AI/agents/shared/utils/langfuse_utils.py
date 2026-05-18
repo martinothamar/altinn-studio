@@ -1,0 +1,263 @@
+"""Langfuse tracking utilities"""
+from contextlib import contextmanager
+from langfuse import Langfuse, get_client
+from shared.config.base_config import get_config
+from shared.utils.logging_utils import get_logger
+
+log = get_logger(__name__)
+config = get_config()
+
+_client = None
+_initialized = False
+
+
+def init_langfuse():
+    """Initialize Langfuse with proper configuration"""
+    global _client, _initialized
+
+    if _initialized:
+        log.debug("Langfuse already initialized")
+        return _client
+
+    if not config.LANGFUSE_ENABLED:
+        log.info("Langfuse tracking is disabled")
+        return None
+
+    try:
+        from opentelemetry.sdk.trace import TracerProvider as _OtelTracerProvider
+        from opentelemetry import trace as _otel_trace
+
+        # Give Langfuse its own dedicated TracerProvider so it is isolated from
+        # the global OTel provider that third-party libraries (fastmcp) share.
+        langfuse_provider = _OtelTracerProvider()
+
+        _client = Langfuse(
+            secret_key=config.LANGFUSE_SECRET_KEY,
+            public_key=config.LANGFUSE_PUBLIC_KEY,
+            host=config.LANGFUSE_HOST,
+            release=config.LANGFUSE_RELEASE,
+            environment=config.LANGFUSE_ENVIRONMENT,
+            tracer_provider=langfuse_provider,
+        )
+
+        # Reset the global OTel provider to a bare no-op (no exporters/processors).
+        # fastmcp's client_span() calls otel_get_tracer() against this global
+        # provider and will now get a no-op tracer, eliminating the duplicate
+        # 'tools/call <name>' child spans and orphan traces from health checks.
+        _otel_trace.set_tracer_provider(_OtelTracerProvider())
+
+        _initialized = True
+        log.info(f"Langfuse initialized successfully (host: {config.LANGFUSE_HOST}, release: {config.LANGFUSE_RELEASE}, env: {config.LANGFUSE_ENVIRONMENT})")
+
+        return _client
+
+    except Exception as e:
+        log.error(f"Failed to initialize Langfuse: {e}")
+        log.warning("Langfuse tracking will be disabled")
+        return None
+
+
+def is_langfuse_enabled() -> bool:
+    """Check if Langfuse tracking is enabled and initialized"""
+    return config.LANGFUSE_ENABLED and _initialized
+
+
+def get_langfuse_client() -> Langfuse | None:
+    """Get or initialize Langfuse client"""
+    global _client
+
+    if not _initialized:
+        init_langfuse()
+
+    return _client
+
+
+def get_raw_langfuse_prompt(prompt_name: str, **kwargs):
+    """Return the raw Langfuse prompt object (not compiled) for linking to generation spans.
+
+    Returns None if Langfuse is disabled, unavailable, or the prompt is not found.
+    Pass the returned object to call_sync/call_async via the langfuse_prompt parameter.
+    """
+    client = get_langfuse_client()
+    if not client:
+        return None
+    try:
+        return client.get_prompt(prompt_name, type="text", **kwargs)
+    except Exception as e:
+        log.debug("Could not fetch raw prompt '%s': %s", prompt_name, e)
+        return None
+
+
+def fetch_langfuse_prompt(
+    prompt_name: str,
+    variables: dict | None = None,
+    *,
+    label: str | None = None,
+    version: int | None = None,
+    cache_ttl_seconds: int | None = None,
+) -> str:
+    """
+    Fetch a prompt from Langfuse by name.
+
+    When variables are provided, they are substituted into the prompt using
+    Langfuse's {{variable}} syntax.
+
+    Args:
+        prompt_name: Name of the prompt in Langfuse
+        variables: Optional dictionary of variables to substitute into the prompt
+        label: Optional label (e.g. "production", "latest"). Defaults to "production" in Langfuse.
+        version: Optional specific version number to fetch
+        cache_ttl_seconds: Optional cache TTL override in seconds
+
+    Returns:
+        Compiled prompt content as string
+
+    Raises:
+        RuntimeError: If Langfuse client is not initialized
+        Exception: If prompt not found in Langfuse
+    """
+    client = get_langfuse_client()
+    if client is None:
+        raise RuntimeError("Langfuse client not initialized")
+
+    kwargs = {}
+    if label is not None:
+        kwargs["label"] = label
+    if version is not None:
+        kwargs["version"] = version
+    if cache_ttl_seconds is not None:
+        kwargs["cache_ttl_seconds"] = cache_ttl_seconds
+
+    prompt = client.get_prompt(prompt_name, type="text", **kwargs)
+    return prompt.compile(**(variables or {}))
+
+
+def flush_langfuse():
+    """Flush any pending Langfuse events (for short-lived applications)"""
+    if _client and is_langfuse_enabled():
+        try:
+            _client.flush()
+            log.debug("Langfuse events flushed")
+        except Exception as e:
+            log.debug(f"Failed to flush Langfuse: {e}")
+
+def score_validation(
+    name: str,
+    passed: bool,
+    trace_id: str | None,
+    observation_id: str | None = None,
+    config_id: str | None = None,
+    comment: str | None = None,
+) -> None:
+    """Write a boolean validation result as a Langfuse score (1 = pass, 0 = fail)."""
+    client = get_langfuse_client()
+    if not config.LANGFUSE_ENABLED:
+        return
+    if not client or not trace_id:
+        return
+    try:
+        kwargs: dict = {
+            "trace_id": trace_id,
+            "name": name,
+            "value": 1.0 if passed else 0.0,
+            "data_type": "BOOLEAN",
+        }
+        if config_id:
+            kwargs["config_id"] = config_id
+        if observation_id:
+            kwargs["observation_id"] = observation_id
+        if comment:
+            kwargs["comment"] = comment
+        client.create_score(**kwargs)
+        log.debug("Langfuse score '%s' = %s written to trace %s", name, passed, trace_id)
+    except Exception as e:
+        log.debug("Failed to create Langfuse score '%s': %s", name, e)
+
+# For backward compatibility with code that expects these functions
+# These are no-ops now since Langfuse handles things differently
+def start_run_safe(run_name: str = None, **kwargs):
+    """
+    Legacy compatibility function. Langfuse uses traces instead of runs.
+    Returns a dummy context manager.
+    """
+    class DummyContext:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+    return DummyContext()
+
+
+def log_param_safe(key: str, value):
+    """
+    Legacy compatibility function. Langfuse uses metadata instead of params.
+    This is now a no-op - use metadata on spans/traces instead.
+    """
+    pass
+
+
+def log_metric_safe(key: str, value: float):
+    """
+    Legacy compatibility function. Langfuse uses scores instead of metrics.
+    This is now a no-op - use scores on traces instead.
+    """
+    pass
+
+
+def log_text_safe(text: str, artifact_file: str):
+    """
+    Legacy compatibility function. Langfuse stores outputs directly.
+    This is now a no-op - use outputs on spans instead.
+    """
+    pass
+
+
+class _NoopSpan:
+    """Dummy span returned when there is no active Langfuse trace context."""
+
+    def update(self, **kwargs):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
+def _has_active_trace() -> bool:
+    """Return True when a Langfuse trace context is currently active."""
+    try:
+        trace_id = get_client().get_current_trace_id()
+        return trace_id is not None
+    except Exception:
+        return False
+
+
+@contextmanager
+def trace_span(name: str, **kwargs):
+    """
+    Creates a Langfuse span only when an active parent trace exists.
+    Falls back to a no-op when called outside a traced workflow,
+    preventing orphan spans with null input / undefined output.
+    """
+    if not is_langfuse_enabled() or not _has_active_trace():
+        yield _NoopSpan()
+        return
+
+    with get_client().start_as_current_observation(as_type="span", name=name, **kwargs) as span:
+        yield span
+
+
+@contextmanager
+def trace_generation(name: str, **kwargs):
+    """
+    Creates a Langfuse generation observation only when an active parent trace exists.
+    Falls back to a no-op otherwise.
+    """
+    if not is_langfuse_enabled() or not _has_active_trace():
+        yield _NoopSpan()
+        return
+
+    with get_client().start_as_current_observation(name=name, as_type="generation", **kwargs) as span:
+        yield span

@@ -1,0 +1,94 @@
+name: Gitea check local gitea locale files
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft, closed]
+    paths:
+      - 'src/gitea/Dockerfile'
+      - 'src/gitea/files/locale/**'
+      - '.github/workflows/gitea-check-texts-file.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check-gitea-texts-file:
+    if: ${{ github.event_name != 'pull_request' || (github.event.action != 'closed' && !github.event.pull_request.draft) }}
+    name: Check Gitea texts file
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Get the new gitea version
+        id: get-gitea-version
+        run: |
+          version=$(cat src/gitea/Dockerfile | grep 'ARG GITEA_VERSION=' | sed -n 's/.*GITEA_VERSION=\(.*\)/\1/p' )
+          echo "gitea-version=$version" >> $GITHUB_OUTPUT
+
+      - name: Verify texts file content
+        id: check-texts-file
+        env:
+          temp-dir: temp
+          texts-file-no: src/gitea/files/locale/base/locale_nb-NO.json
+          custom-texts-file-no: src/gitea/files/locale/custom/locale_nb-NO.json
+          custom-texts-file-us: src/gitea/files/locale/custom/locale_en-US.json
+        run: |
+          # Download the locale file from the gitea release
+          download_url=$(curl https://api.github.com/repos/go-gitea/gitea/releases/tags/v${{ steps.get-gitea-version.outputs.gitea-version }} | \
+            jq -r '.assets[] | select(.name == "gitea-src-${{ steps.get-gitea-version.outputs.gitea-version }}.tar.gz") | .browser_download_url')
+
+          mkdir ${{ env.temp-dir }}
+          curl -L $download_url | tar -xz -C ${{ env.temp-dir }}
+
+          texts_file_us_release=${{ env.temp-dir }}/gitea-src-${{ steps.get-gitea-version.outputs.gitea-version }}/options/locale/locale_en-US.json
+
+          repo_keys_file="${{ env.temp-dir }}/repo"
+          release_keys_file="${{ env.temp-dir }}/release"
+
+          jq -r 'keys[]' "${{ env.texts-file-no }}" | sort > "$repo_keys_file"
+          jq -r 'keys[]' "$texts_file_us_release" | sort > "$release_keys_file"
+
+          # Compare the keys
+          diff_output=$(diff "$repo_keys_file" "$release_keys_file" || true)
+
+          if [ -n "$diff_output" ]; then
+            echo "::error::Keys in locale file ${{ env.texts-file-no }} differ with keys list from Gitea version v${{ steps.get-gitea-version.outputs.gitea-version }}. Please update the locale file."
+            echo "$diff_output"
+            exit 1;
+          else
+            echo "All keys in locale file ${{ env.texts-file-no }} are in sync with Gitea v${{ steps.get-gitea-version.outputs.gitea-version }}."
+          fi
+
+          custom_no_keys_file="${{ env.temp-dir }}/custom_no"
+          custom_us_keys_file="${{ env.temp-dir }}/custom_us"
+
+          jq -r 'keys[]' "${{ env.custom-texts-file-no }}" | sort > "$custom_no_keys_file"
+          jq -r 'keys[]' "${{ env.custom-texts-file-us }}" | sort > "$custom_us_keys_file"
+
+          # Check if custom NO locale keys exist in the release locale keys
+          missing_keys=$(grep -Fxvf "$release_keys_file" "$custom_no_keys_file" || true)
+
+          if [ -n "$missing_keys" ]; then
+            echo "::error::The following keys in the custom NO doesn't exists in Gitea v${{ steps.get-gitea-version.outputs.gitea-version }}:"
+            echo "$missing_keys"
+            exit 1;
+          else
+            echo "All custom NO locale keys exist in Gitea v${{ steps.get-gitea-version.outputs.gitea-version }}."
+          fi
+
+          # Check if custom US locale keys exist in the release locale keys
+          missing_keys_us=$(grep -Fxvf "$release_keys_file" "$custom_us_keys_file" || true)
+
+          if [ -n "$missing_keys_us" ]; then
+            echo "::error::The following keys in the custom US locale do not exist in Gitea v${{ steps.get-gitea-version.outputs.gitea-version }}:"
+            echo "$missing_keys_us"
+            exit 1;
+          else
+            echo "All custom US locale keys exist in Gitea v${{ steps.get-gitea-version.outputs.gitea-version }}."
+          fi

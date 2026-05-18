@@ -1,0 +1,29 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { StudioFormActions } from './';
+
+const meta = {
+  title: 'Components/StudioFormActions',
+  component: StudioFormActions,
+  argTypes: {
+    primary: {
+      disabled: { control: 'boolean' },
+      label: { control: 'text' },
+    },
+  },
+} satisfies Meta<typeof StudioFormActions>;
+export default meta;
+
+type Story = StoryObj<typeof StudioFormActions>;
+
+export const Preview: Story = {
+  args: {
+    primary: {
+      label: 'Save',
+      onClick: () => alert('Saved successfully - ordering another round of sake!'),
+    },
+    secondary: {
+      label: 'Cancel',
+      onClick: () => alert('Cancel the order - time to say sayonara and head home.'),
+    },
+  },
+};

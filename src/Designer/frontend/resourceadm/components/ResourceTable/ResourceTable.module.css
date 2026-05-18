@@ -1,0 +1,15 @@
+.editLinkCell {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.editLink {
+  font-size: var(--ds-font-size-7);
+}
+
+.tagContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--ds-size-1);
+}

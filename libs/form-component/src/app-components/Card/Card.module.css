@@ -1,0 +1,6 @@
+.mediaCard {
+  padding: 0;
+}
+.mediaCard img {
+  object-fit: cover;
+}

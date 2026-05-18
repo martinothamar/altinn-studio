@@ -1,0 +1,31 @@
+@import '@app/form-component/styles/global.css';
+
+:root {
+  /* Toast styles */
+  --toastify-color-info: var(--ds-color-accent-base-default);
+  --toastify-color-success: var(--ds-color-success-base-default);
+  --toastify-color-warning: var(--ds-color-warning-surface-default);
+  --toastify-color-error: var(--ds-color-danger-base-default);
+  --toastify-toast-width: 400px;
+}
+
+.Toastify__toast {
+  line-height: 1.5rem;
+  padding: var(--ds-size-3) var(--ds-size-3) var(--ds-size-4) var(--ds-size-3);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--colors-primary-greyLight);
+}
+
+@media print {
+  body {
+    background-color: white !important;
+  }
+}

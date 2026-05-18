@@ -1,12 +1,7 @@
 name: Resourceadm Playwright Tests in Dev
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'frontend/resourceadm/**'
-      - '.github/workflows/playwright-resourceadm.yml'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,23 +11,24 @@ jobs:
   playwright-run:
     name: 'Resourceadm Playwright Tests'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: 'Checking Out Code'
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           cache: 'yarn'
 
       - name: Get yarn cache directory path
-        working-directory: frontend
+        working-directory: src/Designer/frontend
         id: yarn-cache-dir-path
         run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         id: yarn-cache
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -49,7 +45,7 @@ jobs:
           fi
 
       - name: Resourceadm Playwright run
-        working-directory: frontend/resourceadm/testing/playwright
+        working-directory: src/Designer/frontend/resourceadm/testing/playwright
         env:
           PLAYWRIGHT_TEST_BASE_URL: 'https://staging.altinn.studio'
           PLAYWRIGHT_RESOURCES_ORGANIZATION: ttd
@@ -65,8 +61,8 @@ jobs:
           yarn resourceadm:playwright:test:all
 
       - name: Store artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: failure()
         with:
           name: playwright-resourceadm-screenshots
-          path: frontend/resourceadm/testing/playwright/test-results
+          path: src/Designer/frontend/resourceadm/testing/playwright/test-results

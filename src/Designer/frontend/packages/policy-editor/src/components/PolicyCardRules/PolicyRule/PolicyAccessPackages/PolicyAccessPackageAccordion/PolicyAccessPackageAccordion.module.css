@@ -1,0 +1,7 @@
+.accessPackagePersonAccordion {
+  background-color: var(--ds-color-success-surface-tinted);
+}
+
+.accessPackageOrgAccordion {
+  background-color: var(--ds-color-accent-surface-tinted);
+}

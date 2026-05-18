@@ -1,0 +1,133 @@
+import React from 'react';
+
+import { screen } from '@testing-library/react';
+
+import { getApplicationMetadataMock } from 'src/__mocks__/getApplicationMetadataMock';
+import { getApplicationSettingsMock } from 'src/__mocks__/getApplicationSettingsMock';
+import { getFormBootstrapMock } from 'src/__mocks__/getFormBootstrapMock';
+import { getInstanceDataMock } from 'src/__mocks__/getInstanceDataMock';
+import { defaultDataTypeMock } from 'src/__mocks__/getUiConfigMock';
+import { getSharedTests } from 'src/features/expressions/shared';
+import { FormStore, FormStoreState } from 'src/features/form/FormContext';
+import { renderWithInstanceAndLayout } from 'src/test/renderWithProviders';
+import { splitDashedKey } from 'src/utils/splitDashedKey';
+import type { SharedTestContext, SharedTestContextList } from 'src/features/expressions/shared';
+
+function contextSorter(a: SharedTestContext, b: SharedTestContext): -1 | 0 | 1 {
+  if (a.component === b.component) {
+    return 0;
+  }
+
+  return a.component > b.component ? 1 : -1;
+}
+
+function recurse(state: FormStoreState, nodeId: string, pageKey: string): SharedTestContextList {
+  const splitKey = splitDashedKey(nodeId);
+  const context: SharedTestContextList = {
+    component: splitKey.baseComponentId,
+    currentLayout: pageKey,
+  };
+  const children = Object.values(state.nodes.nodeData)
+    .filter((n) => n.parentId === nodeId)
+    .map((n) => recurse(state, n.id, pageKey));
+  if (children.length) {
+    context.children = children;
+  }
+  if (splitKey.depth.length) {
+    context.rowIndices = splitKey.depth;
+  }
+
+  return context;
+}
+
+function TestContexts() {
+  const contexts = FormStore.raw.useMemoSelector((state) => {
+    const contexts: SharedTestContextList[] = [];
+    for (const page of Object.values(state.nodes.pagesData.pages)) {
+      contexts.push({
+        component: page.pageKey,
+        currentLayout: page.pageKey,
+        children: Object.values(state.nodes.nodeData)
+          .filter((n) => n.pageKey === page.pageKey && n.parentId === undefined)
+          .map((n) => recurse(state, n.id, page.pageKey)),
+      });
+    }
+
+    return contexts;
+  });
+
+  return <div data-testid='test-contexts'>{JSON.stringify(contexts)}</div>;
+}
+
+describe('Expressions shared context tests', () => {
+  const sharedTests = getSharedTests('context-lists');
+
+  describe.each(sharedTests.content)('$folderName', (folder) => {
+    it.each(folder.content)(
+      '$name',
+      async ({
+        layouts,
+        dataModel,
+        instanceDataElements,
+        instance: _instance,
+        frontendSettings,
+        permissions,
+        expectedContexts,
+      }) => {
+        const hasInstance = Boolean(_instance || instanceDataElements || permissions);
+
+        const instance =
+          _instance && instanceDataElements
+            ? { ..._instance, data: [..._instance.data, ...instanceDataElements] }
+            : !_instance && instanceDataElements
+              ? getInstanceDataMock((i) => {
+                  i.data = [...i.data, ...instanceDataElements];
+                })
+              : hasInstance
+                ? getInstanceDataMock((i) => {
+                    for (const key of Object.keys(_instance || {})) {
+                      i[key] = _instance![key];
+                    }
+                  })
+                : undefined;
+
+        const applicationMetadata = getApplicationMetadataMock(instance ? {} : { onEntry: { show: 'stateless' } });
+        window.altinnAppGlobalData.applicationMetadata = applicationMetadata;
+
+        // Set up applicationSettings in window global (useApplicationSettings reads from here)
+        if (frontendSettings) {
+          window.altinnAppGlobalData.frontendSettings = getApplicationSettingsMock(frontendSettings);
+        }
+
+        if (instanceDataElements) {
+          for (const element of instanceDataElements) {
+            if (!applicationMetadata.dataTypes!.find((dt) => dt.id === element.dataType)) {
+              applicationMetadata.dataTypes!.push({
+                id: element.dataType,
+                allowedContentTypes: null,
+                minCount: 0,
+                maxCount: 5,
+              });
+            }
+          }
+        }
+
+        await renderWithInstanceAndLayout({
+          renderer: () => <TestContexts />,
+          queries: {
+            fetchFormBootstrapForInstance: async () =>
+              getFormBootstrapMock((obj) => {
+                obj.layouts = layouts!;
+                obj.dataModels[defaultDataTypeMock].initialData = dataModel ?? {};
+              }),
+            ...(instance ? { fetchInstanceData: async () => instance } : {}),
+            ...(frontendSettings ? { fetchApplicationSettings: async () => frontendSettings } : {}),
+          },
+        });
+
+        const foundContexts = JSON.parse(screen.getByTestId('test-contexts').textContent!);
+        expect(foundContexts.sort(contextSorter)).toEqual(expectedContexts.sort(contextSorter));
+      },
+    );
+  });
+});

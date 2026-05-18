@@ -1,0 +1,175 @@
+﻿[
+  {
+    Severity: Error,
+    DataElementId: MainDataElementGuid,
+    Field: Address,
+    Code: The field Address must be a string or array type with a minimum length of '44'.,
+    Description: The field Address must be a string or array type with a minimum length of '44'.,
+    Source: DataAnnotations,
+    NoIncrementalUpdates: false
+  },
+  {
+    Severity: Error,
+    DataElementId: MainDataElementGuid,
+    Field: Phone,
+    Code: Phone should not be "Phone",
+    Source: Expression,
+    NoIncrementalUpdates: false,
+    CustomTextKey: Phone should not be "Phone"
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm1_Guid,
+    Field: Address,
+    Code: required,
+    Source: Required,
+    NoIncrementalUpdates: false,
+    CustomTextKey: backend.validation_errors.required,
+    CustomTextParameters: {
+      bindingName: simpleBinding,
+      componentId: Address,
+      field: Address,
+      layoutId: subFormLayout,
+      pageId: SubPage,
+      pageName: SubPage
+    }
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm1_Guid,
+    Field: Name,
+    Code: required,
+    Source: Required,
+    NoIncrementalUpdates: false,
+    CustomTextKey: backend.validation_errors.required,
+    CustomTextParameters: {
+      bindingName: simpleBinding,
+      componentId: Name,
+      field: Name,
+      layoutId: subFormLayout,
+      pageId: SubPage,
+      pageName: SubPage
+    }
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm1_Guid,
+    Field: Name,
+    Code: The Name field is required.,
+    Description: The Name field is required.,
+    Source: DataAnnotations,
+    NoIncrementalUpdates: false
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm1_Guid,
+    Field: Phone,
+    Code: required,
+    Source: Required,
+    NoIncrementalUpdates: false,
+    CustomTextKey: backend.validation_errors.required,
+    CustomTextParameters: {
+      bindingName: simpleBinding,
+      componentId: Phone,
+      field: Phone,
+      layoutId: subFormLayout,
+      pageId: SubPage,
+      pageName: SubPage
+    }
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm2_Guid,
+    Field: Email,
+    Code: required,
+    Source: Required,
+    NoIncrementalUpdates: false,
+    CustomTextKey: backend.validation_errors.required,
+    CustomTextParameters: {
+      bindingName: simpleBinding,
+      componentId: Email,
+      field: Email,
+      layoutId: subFormLayout,
+      pageId: SubPage,
+      pageName: SubPage
+    }
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm2_Guid,
+    Field: Phone,
+    Code: Phone should not be "Phone2", but only single error when not null,
+    Source: Expression,
+    NoIncrementalUpdates: false,
+    CustomTextKey: Phone should not be "Phone2", but only single error when not null
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm2_Guid,
+    Field: Phone,
+    Code: The field Phone must match the regular expression '^\+47\d+'.,
+    Description: The field Phone must match the regular expression '^\+47\d+'.,
+    Source: DataAnnotations,
+    NoIncrementalUpdates: false
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm3_Guid,
+    Field: Address,
+    Code: required,
+    Source: Required,
+    NoIncrementalUpdates: false,
+    CustomTextKey: backend.validation_errors.required,
+    CustomTextParameters: {
+      bindingName: simpleBinding,
+      componentId: Address,
+      field: Address,
+      layoutId: subFormLayout,
+      pageId: SubPage,
+      pageName: SubPage
+    }
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm3_Guid,
+    Field: Name,
+    Code: required,
+    Source: Required,
+    NoIncrementalUpdates: false,
+    CustomTextKey: backend.validation_errors.required,
+    CustomTextParameters: {
+      bindingName: simpleBinding,
+      componentId: Name,
+      field: Name,
+      layoutId: subFormLayout,
+      pageId: SubPage,
+      pageName: SubPage
+    }
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm3_Guid,
+    Field: Name,
+    Code: The Name field is required.,
+    Description: The Name field is required.,
+    Source: DataAnnotations,
+    NoIncrementalUpdates: false
+  },
+  {
+    Severity: Error,
+    DataElementId: SubForm3_Guid,
+    Field: Phone,
+    Code: required,
+    Source: Required,
+    NoIncrementalUpdates: false,
+    CustomTextKey: backend.validation_errors.required,
+    CustomTextParameters: {
+      bindingName: simpleBinding,
+      componentId: Phone,
+      field: Phone,
+      layoutId: subFormLayout,
+      pageId: SubPage,
+      pageName: SubPage
+    }
+  }
+]

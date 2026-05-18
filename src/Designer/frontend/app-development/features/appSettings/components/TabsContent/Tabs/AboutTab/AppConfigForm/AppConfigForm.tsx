@@ -1,0 +1,241 @@
+import { useRef, useState } from 'react';
+import type { ChangeEvent, MutableRefObject, ReactElement } from 'react';
+import classes from './AppConfigForm.module.css';
+import { useTranslation } from 'react-i18next';
+import { useUnsavedChangesWarning } from '@studio/hooks';
+import { StudioTextfield, StudioInlineTextField } from '@studio/components';
+import type { ContactPoint, Keyword } from 'app-shared/types/AppConfig';
+import { ActionButtons } from './ActionButtons';
+import { InputfieldsWithTranslation } from './InputfieldsWithTranslation';
+import type { SupportedLanguage } from 'app-shared/types/SupportedLanguages';
+import { useScrollIntoView } from '../hooks/useScrollIntoView';
+import { ObjectUtils } from '@studio/pure-functions';
+import { AppVisibilityAndDelegationCard } from './AppVisibilityAndDelegationCard';
+import { mapKeywordsArrayToString, mapStringToKeywords } from '../utils/appConfigKeywordUtils';
+import type { ApplicationMetadata } from 'app-shared/types/ApplicationMetadata';
+import { ContactPointsTable } from './ContactPointsTable/ContactPointsTable';
+import { DEFAULT_RIGHTS_DESCRIPTION } from 'app-shared/constants';
+
+export type AppConfigFormProps = {
+  appConfig: ApplicationMetadata;
+  saveAppConfig: (appConfig: ApplicationMetadata) => void; // Remove prop when endpoint is implemented
+};
+
+export function AppConfigForm({ appConfig, saveAppConfig }: AppConfigFormProps): ReactElement {
+  const { t } = useTranslation();
+
+  const defaultDescriptionValue = { nb: '', nn: '', en: '' };
+
+  const [updatedAppConfig, setUpdatedAppConfig] = useState<ApplicationMetadata>(appConfig);
+  const [showAppConfigErrors, setShowAppConfigErrors] = useState<boolean>(false);
+  const [keywordsInputValue, setKeywordsInputValue] = useState(
+    mapKeywordsArrayToString(updatedAppConfig.keywords ?? []),
+  );
+  const [unsavedFields, setUnsavedFields] = useState<Set<string>>(new Set());
+
+  const errorSummaryRef: MutableRefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(
+    null,
+  );
+
+  useScrollIntoView(showAppConfigErrors, errorSummaryRef);
+
+  const handleUnsavedValueChange =
+    (fieldId: string) =>
+    (hasUnsavedValue: boolean): void => {
+      setUnsavedFields((prev) => {
+        const next = new Set(prev);
+        if (hasUnsavedValue) next.add(fieldId);
+        else next.delete(fieldId);
+        return next;
+      });
+    };
+
+  const hasUnsavedChanges =
+    !ObjectUtils.areObjectsEqual(updatedAppConfig, appConfig) || unsavedFields.size > 0;
+  useUnsavedChangesWarning(
+    hasUnsavedChanges,
+    t('app_settings.about_tab_unsaved_changes_navigation_warning'),
+  );
+
+  const saveUpdatedAppConfig = (): void => {
+    setShowAppConfigErrors(false);
+    persistAppDetails();
+  };
+
+  const persistAppDetails = (): void => {
+    setShowAppConfigErrors(false);
+    saveAppConfig({ ...updatedAppConfig });
+  };
+
+  const resetAppConfig = (): void => {
+    if (confirm(t('app_settings.about_tab_reset_confirmation'))) {
+      setUpdatedAppConfig(appConfig);
+      setKeywordsInputValue(mapKeywordsArrayToString(appConfig.keywords ?? []));
+      setShowAppConfigErrors(false);
+    }
+  };
+
+  const onChangeTitle = (updatedLanguage: SupportedLanguage): void => {
+    setUpdatedAppConfig((oldVal: ApplicationMetadata) => ({
+      ...oldVal,
+      title: updatedLanguage,
+    }));
+  };
+
+  const onChangeDescription = (updatedLanguage: SupportedLanguage): void => {
+    setUpdatedAppConfig((oldVal: ApplicationMetadata) => ({
+      ...oldVal,
+      description: updatedLanguage,
+    }));
+  };
+
+  const onChangeHomepage = (newValue: string): void => {
+    setUpdatedAppConfig((oldVal: ApplicationMetadata) => ({
+      ...oldVal,
+      homepage: newValue,
+    }));
+  };
+
+  const onChangeDelegable = (e: ChangeEvent<HTMLInputElement>): void => {
+    setUpdatedAppConfig((oldVal: ApplicationMetadata) => ({
+      ...oldVal,
+      access: {
+        ...oldVal.access,
+        delegable: e.target.checked,
+        visible: e.target.checked,
+        rightDescription: getRightDescription(oldVal, e.target.checked),
+      },
+    }));
+  };
+
+  const getRightDescription = (
+    oldVal: ApplicationMetadata,
+    checked: boolean,
+  ): SupportedLanguage => {
+    if (!checked) {
+      return defaultDescriptionValue;
+    }
+    const previous = oldVal.access?.rightDescription ?? defaultDescriptionValue;
+    return {
+      nb: previous.nb || DEFAULT_RIGHTS_DESCRIPTION.nb,
+      nn: previous.nn || DEFAULT_RIGHTS_DESCRIPTION.nn,
+      en: previous.en || DEFAULT_RIGHTS_DESCRIPTION.en,
+    };
+  };
+
+  const onChangeRightDescription = (updatedLanguage: SupportedLanguage): void => {
+    setUpdatedAppConfig((oldVal: ApplicationMetadata) => ({
+      ...oldVal,
+      access: {
+        ...oldVal.access,
+        rightDescription: updatedLanguage,
+      },
+    }));
+  };
+
+  const onChangeKeywords = (newValue: string): void => {
+    setKeywordsInputValue(newValue);
+
+    const keywords: Keyword[] = mapStringToKeywords(newValue);
+    setUpdatedAppConfig((oldVal: ApplicationMetadata) => ({
+      ...oldVal,
+      keywords,
+    }));
+  };
+
+  const onChangeContactPoints = (contactPoints: ContactPoint[]): void => {
+    setUpdatedAppConfig((oldVal: ApplicationMetadata) => ({
+      ...oldVal,
+      contactPoints,
+    }));
+  };
+
+  const onChangeVisible = (e: ChangeEvent<HTMLInputElement>): void => {
+    const isVisible = e.target.checked;
+    setUpdatedAppConfig(
+      (oldVal: ApplicationMetadata): ApplicationMetadata => ({
+        ...oldVal,
+        access: { ...oldVal.access, visible: isVisible, ...(isVisible ? { delegable: true } : {}) },
+      }),
+    );
+  };
+
+  return (
+    <div className={classes.wrapper}>
+      <div className={classes.formWrapper}>
+        <StudioTextfield
+          label={t('app_settings.about_tab_repo_label')}
+          description={t('app_settings.about_tab_repo_description')}
+          defaultValue={updatedAppConfig.id}
+          readOnly
+        />
+        <InputfieldsWithTranslation
+          label={t('app_settings.about_tab_name_label')}
+          description={t('app_settings.about_tab_name_description')}
+          id={AppResourceFormFieldIds.Title}
+          value={updatedAppConfig.title}
+          updateLanguage={onChangeTitle}
+          required
+        />
+        <InputfieldsWithTranslation
+          label={t('app_settings.about_tab_description_field_label')}
+          description={t('app_settings.about_tab_description_field_description')}
+          id={AppResourceFormFieldIds.Description}
+          value={updatedAppConfig.description}
+          updateLanguage={onChangeDescription}
+          required
+          isTextArea
+        />
+        <StudioInlineTextField
+          label={t('app_settings.about_tab_homepage_field_label')}
+          description={t('app_settings.about_tab_homepage_field_description')}
+          value={updatedAppConfig.homepage ?? ''}
+          onChange={onChangeHomepage}
+          required={false}
+          tagText={t('general.optional')}
+          saveAriaLabel={t('general.save')}
+          cancelAriaLabel={t('general.cancel')}
+          onUnsavedValueChange={handleUnsavedValueChange('homepage')}
+        />
+        <AppVisibilityAndDelegationCard
+          visible={updatedAppConfig.access?.visible ?? false}
+          delegable={updatedAppConfig.access?.delegable ?? false}
+          descriptionValue={updatedAppConfig.access?.rightDescription ?? defaultDescriptionValue}
+          onChangeVisible={onChangeVisible}
+          onChangeDelegable={onChangeDelegable}
+          onChangeDescription={onChangeRightDescription}
+        />
+        <StudioInlineTextField
+          label={t('app_settings.about_tab_keywords_label')}
+          description={t('app_settings.about_tab_keywords_description')}
+          value={keywordsInputValue}
+          onChange={onChangeKeywords}
+          required={false}
+          tagText={t('general.optional')}
+          saveAriaLabel={t('general.save')}
+          cancelAriaLabel={t('general.cancel')}
+          onUnsavedValueChange={handleUnsavedValueChange('keywords')}
+        />
+        <ContactPointsTable
+          contactPointList={updatedAppConfig.contactPoints}
+          onContactPointsChanged={onChangeContactPoints}
+          id={AppResourceFormFieldIds.ContactPointsId}
+        />
+      </div>
+      <ActionButtons
+        onSave={saveUpdatedAppConfig}
+        onReset={resetAppConfig}
+        areButtonsDisabled={!hasUnsavedChanges}
+      />
+    </div>
+  );
+}
+
+enum AppResourceFormFieldIds {
+  Title = 'title',
+  Description = 'description',
+  RightDescription = 'rightDescription',
+  Status = 'status',
+  AvailableForType = 'availableForType',
+  ContactPointsId = 'contactPoints',
+}

@@ -1,0 +1,48 @@
+import type { ExprVal, ExprValToActualOrExpr } from 'src/features/expressions/types';
+
+export interface ISimpleInstance {
+  id: string;
+  lastChanged: string;
+  lastChangedBy: string;
+}
+
+export interface IHiddenLayoutsExternal {
+  [layoutKey: string]: ExprValToActualOrExpr<ExprVal.Boolean> | undefined;
+}
+
+export interface IExpandedWidthLayouts {
+  [layoutKey: string]: boolean | undefined;
+}
+
+export interface IPreventNavigationLayouts {
+  [layoutKey: string]: boolean | undefined;
+}
+
+export enum ProcessTaskType {
+  Unknown = 'unknown',
+  Service = 'service',
+  Data = 'data',
+  Archived = 'ended',
+  Confirm = 'confirmation',
+  Feedback = 'feedback',
+  Payment = 'payment',
+  Signing = 'signing',
+}
+
+export enum PresentationType {
+  Stateless = 'stateless',
+}
+
+export enum DateFlags {
+  Today = 'today',
+  Yesterday = 'yesterday',
+  Tomorrow = 'tomorrow',
+  OneYearAgo = 'oneYearAgo',
+  OneYearFromNow = 'oneYearFromNow',
+}
+
+export function isProcessTaskType(taskType: string): taskType is ProcessTaskType {
+  return Object.values(ProcessTaskType).includes(taskType as ProcessTaskType);
+}
+
+export type LooseAutocomplete<T extends string> = T | (string & {}); // NOSONAR

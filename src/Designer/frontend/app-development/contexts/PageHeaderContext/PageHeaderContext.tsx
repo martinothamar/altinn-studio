@@ -1,0 +1,103 @@
+import type { ReactElement, ReactNode } from 'react';
+import { createContext, useContext } from 'react';
+import { type User } from 'app-shared/types/Repository';
+import { type HeaderMenuItem } from 'app-development/types/HeaderMenu/HeaderMenuItem';
+import {
+  type StudioProfileMenuItem,
+  type StudioPageHeaderProps,
+  type StudioProfileMenuGroup,
+} from '@studio/components';
+import { getTopBarMenuItems } from 'app-development/utils/headerMenu/headerMenuUtils';
+import { getRepositoryType } from 'app-shared/utils/repository';
+import { useStudioEnvironmentParams } from 'app-shared/hooks/useStudioEnvironmentParams';
+import { useTranslation } from 'react-i18next';
+import { altinnDocsUrl } from 'app-shared/ext-urls';
+import { useLogoutMutation } from 'app-shared/hooks/mutations/useLogoutMutation';
+import { useSearchParams } from 'react-router-dom';
+import { FeatureFlag, useFeatureFlagsContext } from '@studio/feature-flags';
+import { useEnvironmentConfig } from 'app-shared/contexts/EnvironmentConfigContext';
+import { SETTINGS_BASENAME } from 'app-shared/constants';
+
+export type PageHeaderContextProps = {
+  user: User;
+  menuItems: HeaderMenuItem[];
+  profileMenuItems: StudioProfileMenuItem[];
+  profileMenuGroups: StudioProfileMenuGroup[];
+  repoOwnerIsOrg: boolean;
+  variant: StudioPageHeaderProps['variant'];
+  returnTo: string | null;
+};
+
+export const PageHeaderContext = createContext<Partial<PageHeaderContextProps>>(undefined);
+
+export type PageHeaderContextProviderProps = {
+  children: ReactNode;
+} & PageHeaderContextProps;
+
+export const PageHeaderContextProvider = ({
+  children,
+  user,
+  repoOwnerIsOrg,
+}: Partial<PageHeaderContextProviderProps>): ReactElement => {
+  const { t } = useTranslation();
+  const { org, app } = useStudioEnvironmentParams();
+  const { flags } = useFeatureFlagsContext();
+  const { mutate: logout } = useLogoutMutation();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
+
+  const { environment } = useEnvironmentConfig();
+
+  const repoType = getRepositoryType(org, app);
+  const menuItems = getTopBarMenuItems(repoType, repoOwnerIsOrg, flags);
+
+  const docsMenuItem: StudioProfileMenuItem = {
+    action: { type: 'link', href: altinnDocsUrl(), openInNewTab: true },
+    itemName: t('sync_header.documentation'),
+  };
+
+  const settingsMenuItem: StudioProfileMenuItem = {
+    action: {
+      type: 'link',
+      href: `${SETTINGS_BASENAME}/${org}`,
+      openInNewTab: false,
+    },
+    itemName: t('settings'),
+  };
+
+  const logOutMenuItem: StudioProfileMenuItem = {
+    action: { type: 'button', onClick: logout },
+    itemName: t('shared.header_logout'),
+  };
+
+  const studioOidc = environment?.featureFlags?.studioOidc;
+  const isAdminEnabled = flags.includes(FeatureFlag.Admin);
+  const showSettingsLink = studioOidc || isAdminEnabled;
+
+  const profileMenuItems: StudioProfileMenuItem[] = [
+    ...(showSettingsLink ? [settingsMenuItem] : []),
+    docsMenuItem,
+    logOutMenuItem,
+  ];
+  const profileMenuGroups: StudioProfileMenuGroup[] = [
+    ...(showSettingsLink ? [{ items: [settingsMenuItem] }] : []),
+    { items: [docsMenuItem] },
+    { items: [logOutMenuItem] },
+  ];
+
+  return (
+    <PageHeaderContext.Provider
+      value={{ user, menuItems, profileMenuItems, profileMenuGroups, variant: 'regular', returnTo }}
+    >
+      {children}
+    </PageHeaderContext.Provider>
+  );
+};
+
+export const usePageHeaderContext = (): Partial<PageHeaderContextProps> => {
+  const context = useContext(PageHeaderContext);
+  if (context === undefined) {
+    throw new Error('usePageHeaderContext must be used within a PageHeaderContextProvider');
+  }
+  return context;
+};

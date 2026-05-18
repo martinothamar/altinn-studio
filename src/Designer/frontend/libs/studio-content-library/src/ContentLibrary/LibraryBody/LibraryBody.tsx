@@ -1,0 +1,32 @@
+import React from 'react';
+import classes from './LibraryBody.module.css';
+import { Menu } from './Menu';
+import type { PageName } from '../../types/PageName';
+import type { ContentLibraryConfig } from '../../types/ContentLibraryConfig';
+import type { Page } from '../../pages/Page';
+
+type LibraryBodyProps<T extends PageName> = {
+  config: ContentLibraryConfig;
+  page: Page<T>;
+};
+
+export function LibraryBody<T extends PageName>({
+  config,
+  page,
+}: LibraryBodyProps<T>): React.ReactElement {
+  return (
+    <div className={classes.libraryContent}>
+      <Menu config={config} />
+      <PageView<T> config={config} page={page} />
+    </div>
+  );
+}
+
+type PageViewProps<T extends PageName> = {
+  config: ContentLibraryConfig;
+  page: Page<T>;
+};
+
+function PageView<T extends PageName>({ config, page }: PageViewProps<T>): React.ReactElement {
+  return <div className={classes.component}>{page.renderPage(config)}</div>;
+}
